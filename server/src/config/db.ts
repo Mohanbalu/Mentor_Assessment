@@ -26,7 +26,7 @@ export class ProductionDatabaseEngine {
     };
 
     this.poolConfig = {
-      host: cleanEnv('DB_HOST', 'assessment-db.c0vy4gm62vv8.us-east-1.rds.amazonaws.com'),
+      host: cleanEnv('DB_HOST', 'localhost'),
       port: parseInt(cleanEnv('DB_PORT', '5432'), 10) || 5432,
       database: cleanEnv('DB_NAME', 'assessment_platform'),
       user: cleanEnv('DB_USER', 'postgres'),
