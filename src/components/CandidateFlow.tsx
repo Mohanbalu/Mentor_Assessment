@@ -418,14 +418,24 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   // Code editor simulated execution values helper
   const [codingRunOutput, setCodingRunOutput] = useState<Record<string, string>>({});
   const triggerMockCodeExecution = (qId: string, userCode: string, lang: string) => {
-    let outputText = 'Compiling and Running Code against Standard Test Cases...\n';
-    if (!userCode.trim()) {
-      outputText += '❌ ERROR: Empty code input. Write a valid script first.';
+    let outputText = `[Virtual Sandbox Core Executing on Port 3000]\n`;
+    outputText += `[Judge0 Simulation] Dispatching payload to thread instance...\n`;
+    outputText += `------------------------------------------------------\n`;
+    if (!userCode.trim() || userCode.length < 15) {
+      outputText += `❌ SANDBOX_COMPILE_ERROR:\n  SyntaxError: Unexpected premature end of input. Define your core algorithm classes.\n`;
+      outputText += `  Execution Time: 0ms\n  Max Memory Allowed: 256MB (Used: 0MB)\n`;
     } else {
-      outputText += `✓ Language: ${lang.toUpperCase()}\n`;
-      outputText += '✓ Test Case 1 Passed! (Valid input match)\n';
-      outputText += '✓ Test Case 2 Passed! (Edge cases match)\n';
-      outputText += '✓ Execution successful in 0.04s\n\nOutput: [Success]';
+      const execTime = Math.floor(Math.random() * 25) + 8;
+      const memUsed = (Math.random() * 1.5 + 0.8).toFixed(2);
+      outputText += `✓ ENVIRONMENT BOOTED: ${lang.toUpperCase()} Run-time Environment v18.2\n`;
+      outputText += `✓ TEST 01 (Basic Assertions Match): SUCCESS\n`;
+      outputText += `✓ TEST 02 (Boundary & Empty Array Assertions): SUCCESS\n`;
+      outputText += `✓ TEST 03 (Stress Load Test under 1,000 iterations): SUCCESS\n`;
+      outputText += `------------------------------------------------------\n`;
+      outputText += `STATUS: COMPLETED (SUCCESS_EXIT_CODE)\n`;
+      outputText += `Execution Computational Speed: ${execTime}ms (Time Limit Limit: 2000ms)\n`;
+      outputText += `Active Virtual Memory Footprint: ${memUsed}MB (Memory Limit Limit: 256MB)\n`;
+      outputText += `\nOutput logs stdout: [Process exited with status 0]`;
     }
     setCodingRunOutput(prev => ({ ...prev, [qId]: outputText }));
   };
@@ -1045,6 +1055,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                         <option value="javascript">JavaScript (React compatible)</option>
                         <option value="python">Python 3.10 Engine</option>
                         <option value="c">C Compiler Standard</option>
+                        <option value="cpp">C++ (GCC Gnu Compiler)</option>
                         <option value="java">Java Virtual Machine (JVM)</option>
                       </select>
                     </div>

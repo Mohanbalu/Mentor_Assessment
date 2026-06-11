@@ -134,9 +134,13 @@ export default function App() {
 
         {/* Action controllers resetting mock data */}
         <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-850 px-3 py-1.5 rounded-lg font-mono text-[10px] text-indigo-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>PROD ENGINE POOL ACTIVE</span>
+          </div>
           <button
             onClick={handleResetData}
-            className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-slate-200 text-xs font-mono rounded-lg border border-slate-800 transition-all cursor-pointer"
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-slate-200 text-xs font-mono rounded-lg border border-slate-800 transition-all cursor-pointer"
             title="Reset storage to default seeds"
           >
             RESET SEEDS

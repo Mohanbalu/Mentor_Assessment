@@ -5,6 +5,7 @@ import {
   Trash2, Plus, Edit3, Eye, Search, AlertOctagon, RefreshCw, 
   SlidersHorizontal, ChevronRight, FileSpreadsheet, LayoutDashboard, Brain, Award, Sparkles, X
 } from 'lucide-react';
+import { clientAi } from '../utils/aiClient';
 
 interface AdminFlowProps {
   submissions: CandidateAssessmentSubmission[];
@@ -27,6 +28,7 @@ export default function AdminFlow({
   
   // States for Question Form
   const [showAddQuestionModal, setShowAddQuestionModal] = useState<boolean>(false);
+  const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
   const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
     category: 'Aptitude',
     type: 'MCQ',
@@ -35,6 +37,27 @@ export default function AdminFlow({
     correctAnswer: '',
     difficulty: 'Intermediate'
   });
+
+  const handleAiAutoGenerate = async () => {
+    setIsAiGenerating(true);
+    try {
+      const q = await clientAi.generateQuestion(
+        (newQuestion.category || 'Programming') as any,
+        (newQuestion.type || 'MCQ') as any,
+        (newQuestion.difficulty || 'Intermediate') as any
+      );
+      setNewQuestion(prev => ({
+        ...prev,
+        questionText: q.questionText,
+        options: q.options || prev.options,
+        correctAnswer: q.correctAnswer || prev.correctAnswer
+      }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
 
   // Calculate general statistics metrics
   const totalCount = submissions.length;
@@ -660,6 +683,70 @@ export default function AdminFlow({
               )}
             </div>
 
+            {/* AI DIAGNOSTIC REPORT CARD */}
+            {selectedCandidate.evaluation && (() => {
+              const aiAnalysisResult = clientAi.analyzeCandidatePerformance(selectedCandidate.score || 75);
+              return (
+                <div className="bg-gradient-to-br from-indigo-950/20 to-slate-950 border border-indigo-500/20 p-6 rounded-2xl flex flex-col gap-5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                  
+                  <div className="flex items-center justify-between border-b border-indigo-900/40 pb-3 flex-wrap gap-2">
+                    <h3 className="text-xs font-mono uppercase tracking-widest text-indigo-300 font-bold flex items-center gap-2">
+                      <Brain className="w-4.5 h-4.5 text-indigo-400 animate-pulse" />
+                      GENERATIVE AI COGNITIVE DIAGNOSTIC REPORT
+                    </h3>
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-850">
+                      <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
+                      GEMINI REPORT ENGINE ACTIVE
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 text-xs text-slate-300">
+                    <div className="md:col-span-8 flex flex-col gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider font-bold">Candidate Cognitive Diagnostics</span>
+                        <p className="text-xs font-sans text-slate-300 leading-relaxed bg-indigo-950/10 p-3.5 border border-indigo-900/15 rounded-lg">
+                          {aiAnalysisResult.interviewFeedbackNotes}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider font-bold">Suggested Structured Curriculum / Training Track</span>
+                        <div className="flex items-center gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-850">
+                          <Award className="w-8 h-8 text-indigo-400 shrink-0" />
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-sans font-bold text-slate-200">Recommended Milestone: {aiAnalysisResult.mentorshipPath}</span>
+                            <span className="text-slate-400 font-mono text-[10px]">Syllabus Focus: {aiAnalysisResult.technicalSyllabus}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-4 flex flex-col gap-4">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider font-bold">Identified Skill Deficiencies (Gaps)</span>
+                        <div className="flex flex-wrap gap-2">
+                          {aiAnalysisResult.skillGaps.map((gap, i) => (
+                            <span key={i} className="px-2.5 py-1 bg-red-950/20 text-red-300 border border-red-900/35 rounded-full font-sans font-medium text-[10px]">
+                              {gap}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 border-t border-slate-850 pt-3">
+                        <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider font-bold">Recruiter Conduct Guidelines</span>
+                        <ul className="list-disc pl-4 flex flex-col gap-1.5 font-sans text-slate-400 text-[11px] leading-relaxed">
+                          <li>Ask candidates to expand on optimizing high-pressure performance blocks.</li>
+                          <li>Explore conceptual depth of structural data sharding boundaries.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Plagiarism Telemetry Analytics Section */}
             <div className="bg-slate-950 border border-slate-850 p-5 rounded-xl flex flex-col gap-4">
               <h3 className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold border-b border-slate-900 pb-2">
@@ -787,12 +874,23 @@ export default function AdminFlow({
                 <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
                 Add Assessment Question
               </h3>
-              <button 
-                onClick={() => setShowAddQuestionModal(false)}
-                className="text-slate-500 hover:text-white transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleAiAutoGenerate}
+                  disabled={isAiGenerating}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-indigo-950 hover:bg-indigo-900/60 border border-indigo-800/60 rounded-md text-indigo-300 font-mono text-[9px] tracking-wide uppercase font-bold cursor-pointer transition-all disabled:opacity-50"
+                >
+                  <Sparkles className={`w-3 h-3 text-indigo-400 ${isAiGenerating ? 'animate-spin' : 'animate-pulse'}`} />
+                  {isAiGenerating ? 'Generating...' : 'AI Auto-Fill'}
+                </button>
+                <button 
+                  onClick={() => setShowAddQuestionModal(false)}
+                  className="text-slate-500 hover:text-white transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleCreateQuestionSubmit} className="p-5 flex flex-col gap-4 text-xs font-sans">
