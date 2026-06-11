@@ -39,31 +39,48 @@ export class ProductionDatabaseEngine {
   public async connect(): Promise<boolean> {
     if (this.isConnected && this.pool) return true;
     
-    console.log(`[Database] Establishing enterprise connection pool to ${this.poolConfig.host}:${this.poolConfig.port}/${this.poolConfig.database}`);
-    
-    try {
-      const useSsl = this.poolConfig.host !== 'localhost' && this.poolConfig.host !== '127.0.0.1';
-      this.pool = new pg.Pool({
-        host: this.poolConfig.host,
-        port: this.poolConfig.port,
-        database: this.poolConfig.database,
-        user: this.poolConfig.user,
-        password: this.poolConfig.password,
-        max: this.poolConfig.maxConnections,
-        idleTimeoutMillis: this.poolConfig.idleTimeoutMillis,
-        ssl: useSsl ? { rejectUnauthorized: false } : undefined
-      });
-
-      const client = await this.pool.connect();
-      client.release();
-      this.isConnected = true;
-      console.log('[Database] PostgreSQL connection verified and active.');
-      return true;
-    } catch (err) {
-      console.error('[Database] Failed to connect to PostgreSQL:', err);
-      this.isConnected = false;
-      throw err;
+    const portsToTry: number[] = [this.poolConfig.port || 5432];
+    if (this.poolConfig.port && this.poolConfig.port !== 5432) {
+      portsToTry.push(5432);
     }
+
+    let lastError: any = null;
+
+    for (const port of portsToTry) {
+      console.log(`[Database] Attempting connection. Host: ${this.poolConfig.host}, Port: ${port}, DB: ${this.poolConfig.database}, User: ${this.poolConfig.user}`);
+      
+      try {
+        const useSsl = this.poolConfig.host !== 'localhost' && this.poolConfig.host !== '127.0.0.1';
+        const testPool = new pg.Pool({
+          host: this.poolConfig.host,
+          port: port,
+          database: this.poolConfig.database,
+          user: this.poolConfig.user,
+          password: this.poolConfig.password,
+          max: this.poolConfig.maxConnections,
+          idleTimeoutMillis: this.poolConfig.idleTimeoutMillis,
+          ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+          connectionTimeoutMillis: 5000 // Fast fail-over timeout
+        });
+
+        const client = await testPool.connect();
+        client.release();
+
+        // Successful connection
+        this.pool = testPool;
+        this.poolConfig.port = port; // Update to the successful port
+        this.isConnected = true;
+        console.log(`[Database] PostgreSQL connection successfully verified and active on port ${port}.`);
+        return true;
+      } catch (err: any) {
+        console.warn(`[Database] Connection attempt failed on port ${port}:`, err.message || err);
+        lastError = err;
+      }
+    }
+
+    this.isConnected = false;
+    console.error('[Database] All connection attempts to PostgreSQL failed.', lastError);
+    throw lastError;
   }
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<{ rows: T[]; rowCount: number }> {

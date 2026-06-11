@@ -433,8 +433,8 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       hostname.includes('netlify.app') || 
       hostname.includes('surge.sh')
     ) {
-      // Points exactly to our live cloud-run development environment where we maintain PostgreSQL connections
-      return `https://ais-dev-vltxb5pfefsf2j3b66dird-556698310876.asia-southeast1.run.app${endpoint}`;
+      // Points exactly to our live cloud-run public shared preview environment where we maintain PostgreSQL connections without dev-auth walls
+      return `https://ais-pre-vltxb5pfefsf2j3b66dird-556698310876.asia-southeast1.run.app${endpoint}`;
     }
 
     // 3. Fallback to relative endpoint on standard localhost runs
