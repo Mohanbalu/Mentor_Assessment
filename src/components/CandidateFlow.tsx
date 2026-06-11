@@ -425,15 +425,20 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       return `${envUrl.replace(/\/$/, '')}${endpoint}`;
     }
 
-    // 2. Auto-detect static hosting like Vercel and map requests directly to our active full-stack backend
+    // 2. Auto-detect static hosting like Vercel, GitHub Pages, or Netlify
     const hostname = window.location.hostname;
+    if (hostname.includes('vercel.app')) {
+      // Since we provided a native Serverless Function in /api/candidate-profile.ts, Vercel hosts both frontend and backend on the same origin.
+      // Returning a relative path avoids all CORS, Preflight, and connection-auth bottlenecks.
+      return endpoint;
+    }
+
     if (
-      hostname.includes('vercel.app') || 
       hostname.includes('github.io') || 
       hostname.includes('netlify.app') || 
       hostname.includes('surge.sh')
     ) {
-      // Points exactly to our live cloud-run public shared preview environment where we maintain PostgreSQL connections without dev-auth walls
+      // Fallback for non-Vercel static providers targeting our active preview server
       return `https://ais-pre-vltxb5pfefsf2j3b66dird-556698310876.asia-southeast1.run.app${endpoint}`;
     }
 
