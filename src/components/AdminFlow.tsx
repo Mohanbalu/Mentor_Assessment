@@ -25,6 +25,55 @@ export default function AdminFlow({
   const [adminTab, setAdminTab] = useState<'dashboard' | 'candidates' | 'questions' | 'results'>('dashboard');
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateAssessmentSubmission | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  const handleSelectCandidate = async (candidate: CandidateAssessmentSubmission) => {
+    setSelectedCandidate(candidate);
+    try {
+      const getApiUrl = (endpoint: string): string => {
+        const envUrl = (import.meta as any).env?.VITE_API_URL;
+        if (envUrl) {
+          return `${envUrl.replace(/\/$/, '')}${endpoint}`;
+        }
+        return endpoint;
+      };
+      
+      const url = getApiUrl(`/api/admin/attempts/${candidate.id}`);
+      console.log(`[Admin Detail Sync] Fetching full answers & coding blobs from PostgreSQL RDS: ${url}`);
+      
+      const res = await fetch(url);
+      const resJson = await res.json();
+      
+      if (res.ok && resJson.success && resJson.data) {
+        const payload = resJson.data;
+        const answersList = payload.answers || [];
+        const codingList = payload.codingSubmissions || [];
+        
+        console.log(`[Admin Detail Sync] Received ${answersList.length} database answers and ${codingList.length} code submissions.`);
+        
+        const mappedResponses: CandidateResponse[] = answersList.map((ans: any) => {
+          const codeRow = codingList.find((c: any) => c.question_id === ans.question_id);
+          return {
+            questionId: ans.question_id,
+            selectedOption: ans.question_type.includes('mcq') ? ans.answer_text : undefined,
+            textAnswer: (!ans.question_type.includes('mcq') && !codeRow) ? ans.answer_text : undefined,
+            codeAnswer: codeRow ? codeRow.source_code : undefined,
+            languageSelected: codeRow ? codeRow.language : undefined,
+            answerChangesCount: 0
+          };
+        });
+
+        setSelectedCandidate(prev => {
+          if (!prev || prev.id !== candidate.id) return prev;
+          return {
+            ...prev,
+            responses: mappedResponses
+          };
+        });
+      }
+    } catch (err) {
+      console.error('[Admin Detail Sync ERR] Failed to retrieve deep detail blocks:', err);
+    }
+  };
   
   // States for Question Form
   const [showAddQuestionModal, setShowAddQuestionModal] = useState<boolean>(false);
@@ -393,7 +442,7 @@ export default function AdminFlow({
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => setSelectedCandidate(s)}
+                            onClick={() => handleSelectCandidate(s)}
                             className="bg-indigo-950 text-indigo-300 hover:bg-slate-800 hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] font-sans font-bold flex items-center gap-1 border border-indigo-900/40 transition-all cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />

@@ -41,6 +41,97 @@ export default function App() {
     }
   }, []);
 
+  // Synchronizes full state records from PostgreSQL RDS
+  const syncPostgresSubmissions = async () => {
+    try {
+      const getApiUrl = (endpoint: string): string => {
+        const envUrl = (import.meta as any).env?.VITE_API_URL;
+        if (envUrl) {
+          return `${envUrl.replace(/\/$/, '')}${endpoint}`;
+        }
+        return endpoint;
+      };
+      
+      const url = getApiUrl('/api/admin/attempts');
+      console.log('[System Loader] Fetching attempts from PostgreSQL database:', url);
+      const res = await fetch(url);
+      const resJson = await res.json();
+      
+      if (res.ok && resJson.success && Array.isArray(resJson.data)) {
+        console.log(`[System Loader] Sync complete. Received ${resJson.data.length} records.`);
+        
+        // Map database attempt records directly to UI schemas
+        const mapped: CandidateAssessmentSubmission[] = resJson.data.map((row: any) => {
+          const rawScore = row.total_score ? parseFloat(row.total_score) : 70;
+          return {
+            id: row.id,
+            info: {
+              fullName: row.full_name || '',
+              email: row.email || '',
+              phone: row.phone || '',
+              college: row.college || '',
+              branch: row.branch || '',
+              year: row.academic_year || '',
+              cgpa: row.cgpa ? row.cgpa.toString() : '',
+              githubUrl: row.github_url || '',
+              linkedinUrl: row.linkedin_url || '',
+              targetRole: row.target_role || 'Software Engineering Cohort'
+            },
+            selfAssessment: {
+              c: 5, python: 5, java: 5, dsa: 5, html: 5, css: 5, javascript: 5, react: 5, sql: 5, aiMl: 5, generativeAi: 5, communication: 5
+            },
+            responses: [], // lazy-loaded from /api/admin/attempts/:id upon clicking Report
+            metrics: {
+              tabSwitchCount: 0,
+              copyCount: 0,
+              pasteCount: 0,
+              answerChanges: 0,
+              timePerSection: {},
+              preAssessmentScorePrediction: '70-80'
+            },
+            status: row.status || 'Evaluated',
+            submittedAt: row.submitted_at || row.started_at,
+            score: rawScore,
+            sectionScores: {
+              Aptitude: row.aptitude_score ? parseFloat(row.aptitude_score) : 70,
+              Programming: row.technical_score ? parseFloat(row.technical_score) : 70,
+              Coding: row.coding_score ? parseFloat(row.coding_score) : 70,
+              Mindset: row.mindset_score ? parseFloat(row.mindset_score) : 70
+            },
+            evaluation: {
+              technicalScore: {
+                programming: Math.round((row.technical_score || 70)/10),
+                dsa: Math.round((row.technical_score || 70)/10),
+                webDevelopment: Math.round((row.technical_score || 70)/10),
+                ai: 8
+              },
+              behavioralScore: {
+                communication: 8,
+                learningAbility: Math.round((row.mindset_score || 70)/10),
+                problemSolving: Math.round((row.coding_score || 70)/10)
+              },
+              overallRating: Number((rawScore / 10).toFixed(1)),
+              level: rawScore >= 80 ? 'Advanced' : (rawScore >= 50 ? 'Intermediate' : 'Beginner'),
+              recommendation: row.recommendation || '6 Month Training',
+              reviewerNotes: row.reviewer_notes || 'Database synchronizer automatic record entry evaluation.'
+            }
+          };
+        });
+
+        setSubmissions(mapped);
+      }
+    } catch (err) {
+      console.error('[System Loader ERR] Failed to retrieve and map attempts logs:', err);
+    }
+  };
+
+  // Sync when entering the Admin tab
+  useEffect(() => {
+    if (activePortal === 'admin') {
+      syncPostgresSubmissions();
+    }
+  }, [activePortal]);
+
   // Update localStorage hooks
   const saveSubmissions = (newSubs: CandidateAssessmentSubmission[]) => {
     setSubmissions(newSubs);
@@ -165,10 +256,7 @@ export default function App() {
             questions={questions}
             onAddQuestion={handleAddQuestion}
             onDeleteQuestion={handleDeleteQuestion}
-            onRefreshSubmissions={() => {
-              setSubmissions(INITIAL_CANDIDATES);
-              localStorage.setItem('sa_platform_submissions_v2', JSON.stringify(INITIAL_CANDIDATES));
-            }}
+            onRefreshSubmissions={syncPostgresSubmissions}
           />
         )}
 

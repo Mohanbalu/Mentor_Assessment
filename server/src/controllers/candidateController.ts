@@ -1,6 +1,7 @@
 // server/src/controllers/candidateController.ts - Controller handling candidate particulars and submissions
 import { Request, Response } from 'express';
 import { candidateService } from '../services/candidateService';
+import { assessmentService } from '../services/assessmentService';
 
 export class CandidateController {
   
@@ -72,6 +73,111 @@ export class CandidateController {
         success: false,
         message: 'Failed to save profile. Please try again.',
         error: err.message || 'Internal database persistence error'
+      });
+    }
+  }
+
+  /**
+   * Handles submitting an entire assessment from the frontend candidate sandbox
+   */
+  public async submitAssessment(req: Request, res: Response): Promise<void> {
+    const correlationId = Math.random().toString(36).substring(7).toUpperCase();
+    console.log(`[API Logging - ${correlationId}] Incoming assessment submission - POST /api/candidate-assessment-submit`);
+    
+    // Support submission inside root body or nested in { submission }
+    const submission = req.body?.submission || req.body;
+
+    if (!submission || !submission.info) {
+      console.warn(`[API Logging - ${correlationId}] Missing submission payload`);
+      res.status(400).json({
+        success: false,
+        message: 'Submission failed. Missing valid assessment metadata or candidate information.'
+      });
+      return;
+    }
+
+    try {
+      const result = await assessmentService.saveSubmission(submission);
+      console.log(`[API Logging - ${correlationId}] Submission persisted beautifully. Attempt ID: ${result.attemptId}`);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Assessment results successfully calculated and archived into PostgreSQL RDS.',
+        data: result
+      });
+    } catch (err: any) {
+      console.error(`[API Logging - ${correlationId}] Assessment submission processing failed:`, err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Platform failed to save assessment attempt details.',
+        error: err.message || 'Internal database write error'
+      });
+    }
+  }
+
+  /**
+   * Fetches the array of attempt logs in PostgreSQL for the Admin console list
+   */
+  public async getAttempts(req: Request, res: Response): Promise<void> {
+    const { candidateSearch, assessmentId } = req.query;
+    console.log('[API Logging] Fetching attempts filters:', { candidateSearch, assessmentId });
+
+    try {
+      const attempts = await assessmentService.getAttempts({
+        candidateSearch: candidateSearch ? String(candidateSearch) : undefined,
+        assessmentId: assessmentId ? String(assessmentId) : undefined
+      });
+
+      res.status(200).json({
+        success: true,
+        data: attempts
+      });
+    } catch (err: any) {
+      console.error('[API Logging] Failed to query attempts logs:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to query database attempts registers.',
+        error: err.message
+      });
+    }
+  }
+
+  /**
+   * Fetches detailed candidate answers and code sheets logs for a specific attempt
+   */
+  public async getAttemptDetail(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    console.log(`[API Logging] Inquiring details for attempt: "${id}"`);
+
+    if (!id) {
+      res.status(400).json({
+        success: false,
+        message: 'Attempt identifier is required.'
+      });
+      return;
+    }
+
+    try {
+      const detail = await assessmentService.getAttemptDetail(id);
+      
+      if (!detail) {
+        res.status(404).json({
+          success: false,
+          message: `Attempt details matching key "${id}" could not be located.`
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: detail
+      });
+    } catch (err: any) {
+      console.error('[API Logging] Failed to retrieve individual detail payload:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Internal query operations failure.',
+        error: err.message
       });
     }
   }

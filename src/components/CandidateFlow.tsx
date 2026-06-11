@@ -403,6 +403,33 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     };
 
     onSubmissionComplete(finalSubmission);
+
+    // Dispatch submission to PostgreSQL backend via Render/Unified server endpoint dynamically
+    const saveToRds = async () => {
+      try {
+        const url = getApiUrl('/api/candidate-assessment-submit');
+        console.log(`[Candidacy Dispatch] Saving entire assessment to RDS. Target URL: ${url}`);
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ submission: finalSubmission })
+        });
+        
+        const resJson = await response.json();
+        if (response.ok && resJson.success) {
+          console.log('[Candidacy Dispatch] Assessment successfully persistent in AWS RDS PostgreSQL:', resJson);
+        } else {
+          console.error('[Candidacy Dispatch] Failed to store assessment in RDS:', resJson.message || resJson.error);
+        }
+      } catch (err) {
+        console.error('[Candidacy Dispatch] Network failure connecting to relational persistent endpoint:', err);
+      }
+    };
+    
+    saveToRds();
     setCurrentScreen(14); // Success Page!
   };
 
