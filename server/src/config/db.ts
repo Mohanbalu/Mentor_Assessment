@@ -30,7 +30,7 @@ export class ProductionDatabaseEngine {
       port: parseInt(cleanEnv('DB_PORT', '5432'), 10) || 5432,
       database: cleanEnv('DB_NAME', 'assessment_platform'),
       user: cleanEnv('DB_USER', 'postgres'),
-      password: cleanEnv('DB_PASSWORD', ''),
+      password: cleanEnv('DB_PASSWORD', 'mohanbalu2004'),
       maxConnections: 20,
       idleTimeoutMillis: 30000
     };
