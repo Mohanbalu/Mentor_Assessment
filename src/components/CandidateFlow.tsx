@@ -417,6 +417,30 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     );
   };
 
+  // Helper to determine the optimal API base URL
+  const getApiUrl = (endpoint: string): string => {
+    // 1. Check for explicit environment variable override
+    const envUrl = (import.meta as any).env?.VITE_API_URL;
+    if (envUrl) {
+      return `${envUrl.replace(/\/$/, '')}${endpoint}`;
+    }
+
+    // 2. Auto-detect static hosting like Vercel and map requests directly to our active full-stack backend
+    const hostname = window.location.hostname;
+    if (
+      hostname.includes('vercel.app') || 
+      hostname.includes('github.io') || 
+      hostname.includes('netlify.app') || 
+      hostname.includes('surge.sh')
+    ) {
+      // Points exactly to our live cloud-run development environment where we maintain PostgreSQL connections
+      return `https://ais-dev-vltxb5pfefsf2j3b66dird-556698310876.asia-southeast1.run.app${endpoint}`;
+    }
+
+    // 3. Fallback to relative endpoint on standard localhost runs
+    return endpoint;
+  };
+
   // Persists the candidate profile data to the backend database via API before advancing
   const handleSaveProfile = async () => {
     if (!isProfileFormValid()) return;
@@ -436,8 +460,11 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       linkedin_url: candidateInfo.linkedinUrl
     };
 
+    const targetUrl = getApiUrl('/api/candidate-profile');
+    console.log(`[Candidacy Dispatch] Targeting endpoint: ${targetUrl} with payload:`, payload);
+
     try {
-      const response = await fetch('/api/candidate-profile', {
+      const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -445,7 +472,15 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const textStr = await response.text();
+        console.error('Non-JSON response received from server:', textStr);
+        throw new Error(`The platform server at ${window.location.hostname} isn't running an Express runtime instance (returned content-type: ${contentType || 'plain'}). Verify full-stack setup or try using our active Cloud Run dev server.`);
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to preserve candidate particulars. Please try again.');
