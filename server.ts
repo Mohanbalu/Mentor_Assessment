@@ -4,6 +4,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { dbEngine } from './server/src/config/db';
 import apiRouter from './server/src/routes/api';
+import candidateRoutes from './server/src/routes/candidateRoutes';
 
 async function startServer() {
   const app = express();
@@ -31,6 +32,7 @@ async function startServer() {
 
   // Register API router
   app.use('/api/v1', apiRouter);
+  app.use('/api', candidateRoutes);
 
   // Health check endpoint
   app.get('/health', (req: Request, res: Response) => {

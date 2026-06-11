@@ -34,6 +34,8 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   // Candidate state structures
   const [predictedScore, setPredictedScore] = useState<string>('60-80');
   const [agreedToInstructions, setAgreedToInstructions] = useState<boolean>(false);
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
   
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>({
     fullName: '',
@@ -413,6 +415,50 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       candidateInfo.college.trim().length > 0 &&
       candidateInfo.cgpa.trim().length > 0
     );
+  };
+
+  // Persists the candidate profile data to the backend database via API before advancing
+  const handleSaveProfile = async () => {
+    if (!isProfileFormValid()) return;
+    setIsSavingProfile(true);
+    setProfileSaveError(null);
+
+    const payload = {
+      full_name: candidateInfo.fullName,
+      email: candidateInfo.email,
+      phone: candidateInfo.phone,
+      college: candidateInfo.college,
+      branch: candidateInfo.branch,
+      academic_year: candidateInfo.year,
+      cgpa: candidateInfo.cgpa,
+      target_role: candidateInfo.targetRole,
+      github_url: candidateInfo.githubUrl,
+      linkedin_url: candidateInfo.linkedinUrl
+    };
+
+    try {
+      const response = await fetch('/api/candidate-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to preserve candidate particulars. Please try again.');
+      }
+
+      console.log('Candidate profile saved successful in postgreSQL:', data);
+      setIsSavingProfile(false);
+      setCurrentScreen(4);
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      setProfileSaveError(err.message || 'Failed to save profile. Please try again.');
+      setIsSavingProfile(false);
+    }
   };
 
   // Code editor simulated execution values helper
@@ -797,27 +843,46 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
 
             <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-850">
               <button
+                type="button"
                 onClick={() => setCurrentScreen(2)}
-                className="px-4 py-3 bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 border border-slate-800 transition-all"
+                disabled={isSavingProfile}
+                className="px-4 py-3 bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 border border-slate-800 transition-all disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Back
               </button>
               <button
-                onClick={() => { if (isProfileFormValid()) setCurrentScreen(4); }}
-                disabled={!isProfileFormValid()}
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={!isProfileFormValid() || isSavingProfile}
                 className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                  isProfileFormValid()
+                  isProfileFormValid() && !isSavingProfile
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-500/30'
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-850'
                 }`}
               >
-                Save & Continue
-                <ArrowRight className="w-4 h-4" />
+                {isSavingProfile ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-400 border-t-white rounded-full animate-spin"></span>
+                    <span>Saving Profile...</span>
+                  </>
+                ) : (
+                  <>
+                    Save & Continue
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
-            {!isProfileFormValid() && (
-              <p className="text-[10px] font-mono text-center text-rose-400 animate-pulse">
+            
+            {profileSaveError && (
+              <div className="bg-rose-950/40 border border-rose-900/35 text-rose-300 p-3 rounded-lg text-xs font-sans text-center mt-3">
+                ⚠️ {profileSaveError}
+              </div>
+            )}
+
+            {!isProfileFormValid() && !isSavingProfile && (
+              <p className="text-[10px] font-mono text-center text-rose-400 animate-pulse mt-1">
                 * Please complete all required field elements (FullName, Email, College, Phone, CGPA)
               </p>
             )}

@@ -2,6 +2,7 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import apiRouter from './routes/api';
+import candidateRoutes from './routes/candidateRoutes';
 import { dbEngine } from './config/db';
 
 const app = express();
@@ -29,6 +30,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Register API router
 app.use('/api/v1', apiRouter);
+app.use('/api', candidateRoutes);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
