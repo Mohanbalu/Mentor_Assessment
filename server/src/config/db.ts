@@ -39,6 +39,32 @@ export class ProductionDatabaseEngine {
   public async connect(): Promise<boolean> {
     if (this.isConnected && this.pool) return true;
     
+    // Support unified DATABASE_URL if present (extremely popular on Render, Neon, Supabase, and AWS connection configurations)
+    if (process.env.DATABASE_URL) {
+      console.log('[Database] Connecting using unified DATABASE_URL configuration.');
+      try {
+        const testPool = new pg.Pool({
+          connectionString: process.env.DATABASE_URL,
+          max: this.poolConfig.maxConnections,
+          idleTimeoutMillis: this.poolConfig.idleTimeoutMillis,
+          ssl: { rejectUnauthorized: false }, // Allow secure SSL/TLS connections commonly enforced by cloud DB providers
+          connectionTimeoutMillis: 7000
+        });
+
+        const client = await testPool.connect();
+        client.release();
+
+        this.pool = testPool;
+        this.isConnected = true;
+        console.log('[Database] PostgreSQL database connection successfully verified and active via DATABASE_URL.');
+        return true;
+      } catch (err: any) {
+        console.error('[Database] Connection attempt failed using DATABASE_URL:', err.message || err);
+        this.isConnected = false;
+        throw err;
+      }
+    }
+    
     const portsToTry: number[] = [this.poolConfig.port || 5432];
     if (this.poolConfig.port && this.poolConfig.port !== 5432) {
       portsToTry.push(5432);
