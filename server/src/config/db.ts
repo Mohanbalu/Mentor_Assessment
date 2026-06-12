@@ -707,7 +707,7 @@ export class ProductionDatabaseEngine {
       }
 
       // SELECT from candidate_profiles
-      if (sqlLower.includes('select id from candidate_profiles where') && sqlLower.includes('lower(email) = lower($1)')) {
+      if (sqlLower.includes('from candidate_profiles where') && sqlLower.includes('lower(email) = lower($1)')) {
         const targetEmail = (params[0] || '').trim().toLowerCase();
         const cand = memDatabase.candidate_profiles.find(p => p.email.toLowerCase() === targetEmail);
         return cand ? { rows: [cand] as T[], rowCount: 1 } : { rows: [], rowCount: 0 };

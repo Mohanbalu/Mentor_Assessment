@@ -351,6 +351,36 @@ export class CandidateController {
       });
     }
   }
+
+  /**
+   * Retrieves candidate profile by email
+   */
+  public async getProfile(req: Request, res: Response): Promise<void> {
+    const { email } = req.query;
+    if (!email) {
+      res.status(400).json({ success: false, message: 'Email address is required.' });
+      return;
+    }
+
+    try {
+      const profile = await candidateService.getProfileByEmail(String(email));
+      if (!profile) {
+        res.status(404).json({ success: false, message: 'Profile not found.' });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: profile
+      });
+    } catch (err: any) {
+      console.error('[Candidate Controller] Failed to retrieve candidate profile:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while searching for profile.'
+      });
+    }
+  }
 }
 
 export const candidateController = new CandidateController();

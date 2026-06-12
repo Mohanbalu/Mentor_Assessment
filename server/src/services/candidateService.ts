@@ -213,6 +213,18 @@ WHERE id = $1;
       throw error;
     }
   }
+
+  /**
+   * Retrieves a candidate profile by email
+   */
+  public async getProfileByEmail(email: string) {
+    const q = 'SELECT * FROM candidate_profiles WHERE LOWER(email) = LOWER($1) LIMIT 1;';
+    const result = await dbEngine.query(q, [email.trim().toLowerCase()]);
+    if (result.rows && result.rows.length > 0) {
+      return result.rows[0];
+    }
+    return null;
+  }
 }
 
 export const candidateService = CandidateService.getInstance();

@@ -59,6 +59,10 @@ router.post('/candidate-profile', (req, res, next) => {
   candidateController.saveProfile(req, res).catch(next);
 });
 
+router.get('/candidate-profile', (req, res, next) => {
+  candidateController.getProfile(req, res).catch(next);
+});
+
 router.post('/upload-resume', (req, res, next) => {
   upload.single('resume')(req, res, (err) => {
     if (err) {

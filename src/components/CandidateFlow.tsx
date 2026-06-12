@@ -302,16 +302,54 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     };
   });
 
+  const fetchProfileAndAutofill = async (emailToFetch: string) => {
+    if (!emailToFetch || !emailToFetch.trim()) return;
+    try {
+      const url = getApiUrl(`/api/candidate-profile?email=${encodeURIComponent(emailToFetch.trim())}`);
+      const res = await fetch(url);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.success && body.data) {
+          const dbRecord = body.data;
+          console.log('[Autofill] Found existing profile in DB, autofilling fields:', dbRecord);
+          setCandidateInfo(prev => {
+            const updated = {
+              fullName: dbRecord.full_name || prev.fullName || '',
+              email: dbRecord.email || prev.email || '',
+              phone: dbRecord.phone || prev.phone || '',
+              college: dbRecord.college || prev.college || '',
+              branch: dbRecord.branch || prev.branch || '',
+              year: dbRecord.academic_year || prev.year || 'Third Year',
+              cgpa: dbRecord.cgpa !== null && dbRecord.cgpa !== undefined ? dbRecord.cgpa.toString() : (prev.cgpa || ''),
+              githubUrl: dbRecord.github_url || prev.githubUrl || '',
+              linkedinUrl: dbRecord.linkedin_url || prev.linkedinUrl || '',
+              targetRole: dbRecord.target_role || prev.targetRole || 'Software Engineer',
+              resumeUrl: dbRecord.resume_url || prev.resumeUrl || '',
+              resumeFilename: dbRecord.resume_filename || prev.resumeFilename || ''
+            };
+            localStorage.setItem('candidate_info', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[Autofill] Failed to query existing profile:', err);
+    }
+  };
+
   // Automatically inject and preserve candidateEmail if provided and email field is not set
   useEffect(() => {
-    if (candidateEmail && !candidateInfo.email) {
+    if (candidateEmail) {
       setCandidateInfo(prev => {
         const updated = { ...prev, email: candidateEmail };
         localStorage.setItem('candidate_info', JSON.stringify(updated));
         return updated;
       });
+      fetchProfileAndAutofill(candidateEmail);
+    } else if (candidateInfo.email) {
+      fetchProfileAndAutofill(candidateInfo.email);
     }
-  }, [candidateEmail, candidateInfo.email]);
+  }, [candidateEmail]);
 
   // Persists draft progress periodically of changes
   useEffect(() => {
@@ -1329,7 +1367,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                 )}
               </div>
 
-              {/* Email Address */}
+               {/* Email Address */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Email Address *</label>
                 <input
@@ -1337,6 +1375,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   placeholder="siddharth.roy@vit.edu"
                   value={candidateInfo.email}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, email: e.target.value }))}
+                  onBlur={(e) => fetchProfileAndAutofill(e.target.value)}
                   className={`bg-slate-900 border ${validationErrors.email ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
                 {validationErrors.email && (
