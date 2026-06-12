@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { candidateService } from '../services/candidateService';
 import { assessmentService } from '../services/assessmentService';
 import { dbEngine } from '../config/db';
+import { s3Controller } from '../config/aws';
 
 export class CandidateController {
   
@@ -289,6 +290,57 @@ export class CandidateController {
       res.status(500).json({
         success: false,
         message: 'Internal query failure.'
+      });
+    }
+  }
+
+  /**
+   * Dynamically handles resume upload to S3.
+   * Path: resumes/{userId}/{timestamp}-{filename}
+   */
+  public async uploadResume(req: Request, res: Response): Promise<void> {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ success: false, message: 'No resume file provided.' });
+      return;
+    }
+
+    try {
+      // Determine prospective candidate profile ID (to fulfill resumes/{userId}/ structure)
+      let userId: string = 'temp';
+      try {
+        const checkMaxId = await dbEngine.query('SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM candidate_profiles;');
+        if (checkMaxId.rows && checkMaxId.rows.length > 0) {
+          userId = (checkMaxId.rows[0] as any).next_id.toString();
+        }
+      } catch (dbErr) {
+        console.warn('[Upload Resume] Failed to query prospective userId:', dbErr);
+      }
+
+      // Upload file to S3
+      const timestamp = Math.floor(Date.now() / 1000);
+      const sanitFileName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const fileKey = `resumes/${userId}/${timestamp}-${sanitFileName}`;
+
+      const s3Url = await s3Controller.uploadFileDirectly(
+        fileKey,
+        file.buffer,
+        file.mimetype
+      );
+
+      console.log('[RESUME UPLOADED]');
+      console.log(`Candidate ID: ${userId}`);
+      console.log(`S3 URL: ${s3Url}`);
+
+      res.status(200).json({
+        success: true,
+        resumeUrl: s3Url
+      });
+    } catch (err: any) {
+      console.error('[Upload Resume Error] Upload failed:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: err.message || 'Failed to upload resume to S3.'
       });
     }
   }

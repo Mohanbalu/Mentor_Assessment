@@ -114,7 +114,9 @@ export default function App() {
               cgpa: row.cgpa ? row.cgpa.toString() : '',
               githubUrl: row.github_url || '',
               linkedinUrl: row.linkedin_url || '',
-              targetRole: row.target_role || 'Software Engineering Cohort'
+              targetRole: row.target_role || 'Software Engineering Cohort',
+              resumeUrl: row.resume_url || '',
+              resumeFilename: row.resume_filename || ''
             },
             selfAssessment: {
               c: 5, python: 5, java: 5, dsa: 5, html: 5, css: 5, javascript: 5, react: 5, sql: 5, aiMl: 5, generativeAi: 5, communication: 5

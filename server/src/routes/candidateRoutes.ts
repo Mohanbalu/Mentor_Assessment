@@ -3,8 +3,26 @@ import { Router } from 'express';
 import { candidateController } from '../controllers/candidateController';
 import { otpAuthController } from '../controllers/otpAuthController';
 import { authorizeJwt, restrictToRoles } from '../middlewares/auth';
+import multer from 'multer';
+import path from 'path';
 
 const router = Router();
+
+// Configure memory storage for Multer uploads to AWS S3 directly
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5 MB maximum size limit
+  },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === '.pdf' || ext === '.doc' || ext === '.docx') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, DOC, and DOCX formats are allowed.'));
+    }
+  }
+});
 
 // =========================================================================
 // PUBLIC PORTS (Email verification and credential authentication routes)
@@ -39,6 +57,18 @@ router.post('/auth/admin-verify-otp', (req, res, next) => {
 
 router.post('/candidate-profile', (req, res, next) => {
   candidateController.saveProfile(req, res).catch(next);
+});
+
+router.post('/upload-resume', (req, res, next) => {
+  upload.single('resume')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'File upload validation failed. Keep size under 5MB and format PDF/DOC/DOCX.'
+      });
+    }
+    candidateController.uploadResume(req, res).catch(next);
+  });
 });
 
 router.post('/candidate-assessment-submit', (req, res, next) => {

@@ -12,6 +12,8 @@ export interface CandidateProfilePayload {
   target_role?: string;
   github_url?: string;
   linkedin_url?: string;
+  resume_url?: string;
+  resume_filename?: string;
 }
 
 export class CandidateService {
@@ -41,9 +43,11 @@ export class CandidateService {
         cgpa,
         target_role,
         github_url,
-        linkedin_url
+        linkedin_url,
+        resume_url,
+        resume_filename
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *;
     `;
 
@@ -60,7 +64,9 @@ export class CandidateService {
       cgpaVal,
       payload.target_role || null,
       payload.github_url || null,
-      payload.linkedin_url || null
+      payload.linkedin_url || null,
+      payload.resume_url || null,
+      payload.resume_filename || null
     ];
 
     console.log('[Candidate Service] Injecting profile dataset to postgreSQL:', params);
@@ -70,10 +76,22 @@ export class CandidateService {
       if (result.rowCount && result.rowCount > 0) {
         const savedCand = result.rows[0] as any;
         console.log('[Candidate Service] Database insert success:', savedCand);
+        
         console.log('[DATA SAVED]');
         console.log('Table Name: candidate_profiles');
         console.log(`User ID: ${savedCand.id}`);
         console.log(`Inserted Record ID: ${savedCand.id}`);
+
+        console.log('[PROFILE SAVED]');
+        console.log(`Candidate ID: ${savedCand.id}`);
+        console.log(`Email: ${savedCand.email}`);
+
+        if (savedCand.resume_url) {
+          console.log('[RESUME UPLOADED]');
+          console.log(`Candidate ID: ${savedCand.id}`);
+          console.log(`S3 URL: ${savedCand.resume_url}`);
+        }
+
         return savedCand;
       }
       throw new Error('No rows returned from query execution insert.');

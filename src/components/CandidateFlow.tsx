@@ -146,6 +146,8 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   const [agreedToInstructions, setAgreedToInstructions] = useState<boolean>(false);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>({
     fullName: '',
@@ -157,7 +159,9 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     cgpa: '',
     githubUrl: '',
     linkedinUrl: '',
-    targetRole: 'Software Engineer'
+    targetRole: 'Software Engineer',
+    resumeUrl: '',
+    resumeFilename: ''
   });
 
   const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>({
@@ -543,15 +547,145 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     setCurrentScreen(14); // Success Page!
   };
 
+  // Helper validation and S3 resume uploader
+  const handleResumeUpload = async (file: File) => {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (ext !== '.pdf' && ext !== '.doc' && ext !== '.docx') {
+      setUploadError('Only PDF, DOC, and DOCX formats are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File size exceeds the 5 MB limit.');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      const uploadUrl = getApiUrl('/api/upload-resume');
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Failed to upload your resume to S3.');
+      }
+
+      const resData = await res.json();
+      if (resData.success) {
+        setCandidateInfo(prev => ({
+          ...prev,
+          resumeUrl: resData.resumeUrl,
+          resumeFilename: file.name
+        }));
+        console.log('[S3 Resume Upload Success] S3 URL:', resData.resumeUrl);
+      } else {
+        throw new Error(resData.message || 'S3 upload failed.');
+      }
+    } catch (err: any) {
+      console.error('[Upload Resume Error]', err);
+      setUploadError(err.message || 'Error occurred while uploading resume.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Form validations helper for Candidate Profile
+  const getValidationErrors = () => {
+    const errors: Record<string, string> = {};
+
+    // Full Name
+    const nameTrimmed = candidateInfo.fullName.trim();
+    if (nameTrimmed.length === 0) {
+      errors.fullName = 'Full Name is required';
+    } else if (nameTrimmed.length < 3) {
+      errors.fullName = 'Full Name must be at least 3 characters';
+    } else if (!/^[A-Za-z\s]+$/.test(nameTrimmed)) {
+      errors.fullName = 'Full Name can only contain alphabets and spaces';
+    }
+
+    // Email
+    const emailTrimmed = candidateInfo.email.trim();
+    if (emailTrimmed.length === 0) {
+      errors.email = 'Email Address is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    // Phone
+    const phoneTrimmed = candidateInfo.phone.trim().replace(/\s+/g, '');
+    if (phoneTrimmed.length === 0) {
+      errors.phone = 'Phone Number is required';
+    } else if (!/^\d{10}$/.test(phoneTrimmed)) {
+      errors.phone = 'Phone Number must be exactly 10 digits';
+    }
+
+    // College
+    const collegeTrimmed = candidateInfo.college.trim();
+    if (collegeTrimmed.length === 0) {
+      errors.college = 'College / University is required';
+    } else if (collegeTrimmed.length < 3) {
+      errors.college = 'College name must be at least 3 characters';
+    }
+
+    // CGPA
+    const cgpaTrimmed = candidateInfo.cgpa.trim();
+    if (cgpaTrimmed.length === 0) {
+      errors.cgpa = 'CGPA is required';
+    } else {
+      const cgpaNum = parseFloat(cgpaTrimmed);
+      if (isNaN(cgpaNum) || !/^\d+(\.\d+)?$/.test(cgpaTrimmed)) {
+        errors.cgpa = 'CGPA must be a valid number';
+      } else if (cgpaNum < 0 || cgpaNum > 10) {
+        errors.cgpa = 'CGPA must be between 0 and 10';
+      }
+    }
+
+    // Github URL (Optional)
+    const githubTrimmed = candidateInfo.githubUrl.trim();
+    if (githubTrimmed.length > 0) {
+      if (!/^(https?:\/\/)?(www\.)?github\.com\/[A-Za-z0-9_\-\/]+/i.test(githubTrimmed)) {
+        errors.githubUrl = 'Must be a valid GitHub URL (e.g. github.com/username)';
+      }
+    }
+
+    // LinkedIn URL (Optional)
+    const linkedinTrimmed = candidateInfo.linkedinUrl.trim();
+    if (linkedinTrimmed.length > 0) {
+      if (!/^(https?:\/\/)?(www\.)?linkedin\.com\/[A-Za-z0-9_\-\/]+/i.test(linkedinTrimmed)) {
+        errors.linkedinUrl = 'Must be a valid LinkedIn URL (e.g. linkedin.com/in/username)';
+      }
+    }
+
+    return errors;
+  };
+
   // Helper validation for profile screen
   const isProfileFormValid = () => {
-    return (
-      candidateInfo.fullName.trim().length > 0 &&
+    const hasRequiredValues = 
+      candidateInfo.fullName.trim().length >= 3 &&
       candidateInfo.email.trim().length > 0 &&
       candidateInfo.phone.trim().length > 0 &&
-      candidateInfo.college.trim().length > 0 &&
-      candidateInfo.cgpa.trim().length > 0
-    );
+      candidateInfo.college.trim().length >= 3 &&
+      candidateInfo.cgpa.trim().length > 0;
+
+    if (!hasRequiredValues) return false;
+
+    const errs = getValidationErrors();
+    const requiredErrorKeys = ['fullName', 'email', 'phone', 'college', 'cgpa'];
+    
+    const hasRequiredErrors = requiredErrorKeys.some(key => !!errs[key]);
+    if (hasRequiredErrors) return false;
+
+    if (errs.githubUrl || errs.linkedinUrl) return false;
+
+    return true;
   };
 
   // Helper to determine the optimal API base URL
@@ -573,7 +707,9 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       cgpa: candidateInfo.cgpa,
       target_role: candidateInfo.targetRole,
       github_url: candidateInfo.githubUrl,
-      linkedin_url: candidateInfo.linkedinUrl
+      linkedin_url: candidateInfo.linkedinUrl,
+      resume_url: candidateInfo.resumeUrl || null,
+      resume_filename: candidateInfo.resumeFilename || null
     };
 
     const targetUrl = getApiUrl('/api/candidate-profile');
@@ -603,6 +739,29 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       }
 
       console.log('Candidate profile saved successful in postgreSQL:', data);
+      
+      // Update candidate DB profile ID locally
+      if (data.data?.id) {
+        const savedId = data.data.id;
+        setCandidateDbId(savedId);
+        localStorage.setItem('candidate_db_id', savedId.toString());
+
+        // Dynamic back-link link the scores properly
+        try {
+          await fetch(getApiUrl('/api/pre-assessment-score'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: sessionId,
+              expected_score: predictedScore,
+              candidate_id: savedId
+            })
+          });
+        } catch (linkScoreErr) {
+          console.error('Link pre-assessment score failed inline:', linkScoreErr);
+        }
+      }
+
       setIsSavingProfile(false);
       setCurrentScreen(4);
     } catch (err: any) {
@@ -636,6 +795,8 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     }
     setCodingRunOutput(prev => ({ ...prev, [qId]: outputText }));
   };
+
+  const validationErrors = getValidationErrors();
 
   // Render Screens
   return (
@@ -877,6 +1038,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Full Name */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Full Name *</label>
                 <input
@@ -884,10 +1046,14 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   placeholder="Siddharth Roy"
                   value={candidateInfo.fullName}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, fullName: e.target.value }))}
-                  className="bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                  className={`bg-slate-900 border ${validationErrors.fullName ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
+                {validationErrors.fullName && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{validationErrors.fullName}</p>
+                )}
               </div>
 
+              {/* Email Address */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Email Address *</label>
                 <input
@@ -895,21 +1061,29 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   placeholder="siddharth.roy@vit.edu"
                   value={candidateInfo.email}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, email: e.target.value }))}
-                  className="bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                  className={`bg-slate-900 border ${validationErrors.email ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
+                {validationErrors.email && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{validationErrors.email}</p>
+                )}
               </div>
 
+              {/* Phone Number */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Phone Number *</label>
                 <input
                   type="tel"
-                  placeholder="+91 98765 43210"
+                  placeholder="9876543210"
                   value={candidateInfo.phone}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, phone: e.target.value }))}
-                  className="bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                  className={`bg-slate-900 border ${validationErrors.phone ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
+                {validationErrors.phone && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{validationErrors.phone}</p>
+                )}
               </div>
 
+              {/* College / University */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">College / University *</label>
                 <input
@@ -917,10 +1091,14 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   placeholder="Vellore Institute of Technology"
                   value={candidateInfo.college}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, college: e.target.value }))}
-                  className="bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                  className={`bg-slate-900 border ${validationErrors.college ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
+                {validationErrors.college && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{validationErrors.college}</p>
+                )}
               </div>
 
+              {/* Branch */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Branch / Specialization</label>
                 <input
@@ -932,8 +1110,9 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                 />
               </div>
 
+              {/* Academic Year */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Academic Year</label>
+                <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Academic Year *</label>
                 <select
                   value={candidateInfo.year}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, year: e.target.value }))}
@@ -947,6 +1126,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                 </select>
               </div>
 
+              {/* CGPA */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">CGPA / Percentage *</label>
                 <input
@@ -954,10 +1134,14 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   placeholder="9.2"
                   value={candidateInfo.cgpa}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, cgpa: e.target.value }))}
-                  className="bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                  className={`bg-slate-900 border ${validationErrors.cgpa ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
+                {validationErrors.cgpa && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{validationErrors.cgpa}</p>
+                )}
               </div>
 
+              {/* Target Role */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Target Training Role</label>
                 <input
@@ -969,6 +1153,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                 />
               </div>
 
+              {/* Github URL */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Github Profile URL</label>
                 <input
@@ -976,10 +1161,14 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   placeholder="https://github.com/..."
                   value={candidateInfo.githubUrl}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, githubUrl: e.target.value }))}
-                  className="bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                  className={`bg-slate-900 border ${validationErrors.githubUrl ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
+                {validationErrors.githubUrl && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{validationErrors.githubUrl}</p>
+                )}
               </div>
 
+              {/* LinkedIn URL */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">LinkedIn Profile URL</label>
                 <input
@@ -987,8 +1176,77 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   placeholder="https://linkedin.com/..."
                   value={candidateInfo.linkedinUrl}
                   onChange={(e) => setCandidateInfo(prev => ({ ...prev, linkedinUrl: e.target.value }))}
-                  className="bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                  className={`bg-slate-900 border ${validationErrors.linkedinUrl ? 'border-rose-900/60 focus:border-rose-500' : 'border-slate-800 focus:border-indigo-500'} rounded-lg py-2.5 px-3.5 text-xs text-white focus:outline-none transition-all font-sans`}
                 />
+                {validationErrors.linkedinUrl && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{validationErrors.linkedinUrl}</p>
+                )}
+              </div>
+
+              {/* Resume Upload Box (Full single row below fields) */}
+              <div className="flex flex-col gap-1.5 md:col-span-2 mt-2">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Upload Resume *</label>
+                <div 
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleResumeUpload(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  className={`bg-slate-900 border-2 border-dashed ${candidateInfo.resumeUrl ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-slate-800 hover:border-indigo-500/50'} rounded-xl p-6 transition-all duration-200 text-center relative flex flex-col items-center justify-center gap-2 cursor-pointer`}
+                  onClick={() => {
+                    document.getElementById('hidden-resume-input')?.click();
+                  }}
+                >
+                  <input 
+                    id="hidden-resume-input"
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleResumeUpload(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  
+                  {isUploading ? (
+                    <div className="flex flex-col items-center gap-2 py-2">
+                      <span className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
+                      <span className="text-xs text-indigo-400 font-mono">Uploading to AWS S3...</span>
+                    </div>
+                  ) : candidateInfo.resumeUrl ? (
+                    <div className="flex flex-col items-center gap-1.5 py-2">
+                      <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <p className="text-xs text-emerald-400 font-bold font-sans">Resume uploaded successfully</p>
+                      <p className="text-[11px] text-slate-300 font-mono select-all bg-slate-950 border border-slate-850 px-2.5 py-1 rounded mt-1.5 max-w-[280px] truncate">
+                        {candidateInfo.resumeFilename}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-1">Click or drag again to replace</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-2">
+                      <div className="w-10 h-10 bg-slate-950 border border-slate-800 rounded-full flex items-center justify-center text-slate-400">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="text-indigo-400 font-bold text-xs hover:underline">Upload Resume</span>
+                        <span className="text-slate-400 text-xs text-center"> or drag and drop</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-mono">Accepted formats: PDF, DOC, DOCX up to 5MB</p>
+                    </div>
+                  )}
+                </div>
+                {uploadError && (
+                  <p className="text-rose-400 text-[10px] font-mono mt-0.5">{uploadError}</p>
+                )}
               </div>
             </div>
 
@@ -1008,7 +1266,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                 disabled={!isProfileFormValid() || isSavingProfile}
                 className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all ${
                   isProfileFormValid() && !isSavingProfile
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-500/30'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-500/30 cursor-pointer'
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-850'
                 }`}
               >
@@ -1034,7 +1292,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
 
             {!isProfileFormValid() && !isSavingProfile && (
               <p className="text-[10px] font-mono text-center text-rose-400 animate-pulse mt-1">
-                * Please complete all required field elements (FullName, Email, College, Phone, CGPA)
+                * Please satisfy all validation rules and field requirements. Clear all errors to proceed.
               </p>
             )}
           </div>

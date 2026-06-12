@@ -9,6 +9,8 @@ export interface CandidateInfo {
   githubUrl: string;
   linkedinUrl: string;
   targetRole: string;
+  resumeUrl?: string;
+  resumeFilename?: string;
 }
 
 export interface SelfAssessment {

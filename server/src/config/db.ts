@@ -284,6 +284,8 @@ export class ProductionDatabaseEngine {
         target_role VARCHAR(255),
         github_url VARCHAR(255),
         linkedin_url VARCHAR(255),
+        resume_url TEXT,
+        resume_filename VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
 
@@ -418,6 +420,15 @@ export class ProductionDatabaseEngine {
       }
     }
     console.log('[Db Engine Schema Init] All table templates processed.');
+
+    // Alter candidate_profiles table to ensure columns resume_url and resume_filename exist in case db exists
+    try {
+      await this.query(`ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS resume_url TEXT;`);
+      await this.query(`ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS resume_filename VARCHAR(255);`);
+      console.log('[Db Engine Schema Init] Candidate profiles migration columns successfully checked/added.');
+    } catch (migErr: any) {
+      console.warn('[Db Engine Schema Init] Candidate profiles alter execution warning:', migErr.message || migErr);
+    }
 
     // Seed admins table with initial super_admin config
     try {
@@ -620,6 +631,8 @@ export class ProductionDatabaseEngine {
           target_role: params[7],
           github_url: params[8],
           linkedin_url: params[9],
+          resume_url: params[10],
+          resume_filename: params[11],
           created_at: new Date()
         };
         memDatabase.candidate_profiles.push(newRecord);

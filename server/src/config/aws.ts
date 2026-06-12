@@ -7,7 +7,7 @@ export class ProductionS3Controller {
 
   private constructor() {
     this.region = process.env.AWS_REGION || 'us-east-1';
-    this.bucketName = process.env.S3_BUCKET || 'assessment-platform-assets-prod';
+    this.bucketName = process.env.S3_BUCKET || 'assessment-platform-storage';
   }
 
   public static getInstance(): ProductionS3Controller {
