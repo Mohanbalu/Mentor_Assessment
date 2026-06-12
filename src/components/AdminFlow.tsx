@@ -40,7 +40,15 @@ export default function AdminFlow({
       const url = getApiUrl(`/api/admin/attempts/${candidate.id}`);
       console.log(`[Admin Detail Sync] Fetching full answers & coding blobs from PostgreSQL RDS: ${url}`);
       
-      const res = await fetch(url);
+      const tokenVal = localStorage.getItem('sa_admin_jwt');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (tokenVal) {
+        headers['Authorization'] = `Bearer ${tokenVal}`;
+      }
+
+      const res = await fetch(url, { headers });
       const resJson = await res.json();
       
       if (res.ok && resJson.success && resJson.data) {

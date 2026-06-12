@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CandidateFlow from './components/CandidateFlow';
 import AdminFlow from './components/AdminFlow';
+import AdminLogin from './components/AdminLogin';
 import ArchitectureBlueprints from './components/ArchitectureBlueprints';
 import { INITIAL_QUESTIONS, INITIAL_CANDIDATES } from './data/questions';
 import { CandidateAssessmentSubmission, Question } from './types';
@@ -8,6 +9,25 @@ import { GraduationCap, BarChart2, ShieldAlert, Cpu, Layers, BookOpen, Sun, Help
 
 export default function App() {
   const [activePortal, setActivePortal] = useState<'candidate' | 'admin' | 'blueprints'>('candidate');
+  
+  // JWT state managers
+  const [token, setToken] = useState<string | null>(localStorage.getItem('sa_admin_jwt'));
+  const [adminUser, setAdminUser] = useState<any>(() => {
+    const cached = localStorage.getItem('sa_admin_user');
+    try {
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleLogout = () => {
+    setToken(null);
+    setAdminUser(null);
+    localStorage.removeItem('sa_admin_jwt');
+    localStorage.removeItem('sa_admin_user');
+    setActivePortal('candidate');
+  };
   
   // Persistent Storage states
   const [submissions, setSubmissions] = useState<CandidateAssessmentSubmission[]>([]);
@@ -54,7 +74,22 @@ export default function App() {
       
       const url = getApiUrl('/api/admin/attempts');
       console.log('[System Loader] Fetching attempts from PostgreSQL database:', url);
-      const res = await fetch(url);
+      
+      const tokenVal = localStorage.getItem('sa_admin_jwt');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (tokenVal) {
+        headers['Authorization'] = `Bearer ${tokenVal}`;
+      }
+
+      const res = await fetch(url, { headers });
+      
+      if (res.status === 401 || res.status === 403) {
+        console.warn('[System Loader] Token expired or unauthorized. Logging out.');
+        handleLogout();
+        return;
+      }
       const resJson = await res.json();
       
       if (res.ok && resJson.success && Array.isArray(resJson.data)) {
@@ -223,19 +258,36 @@ export default function App() {
           ))}
         </div>
 
-        {/* Action controllers resetting mock data */}
-        <div className="hidden md:flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-850 px-3 py-1.5 rounded-lg font-mono text-[10px] text-indigo-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>PROD ENGINE POOL ACTIVE</span>
-          </div>
-          <button
-            onClick={handleResetData}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-slate-200 text-xs font-mono rounded-lg border border-slate-800 transition-all cursor-pointer"
-            title="Reset storage to default seeds"
-          >
-            RESET SEEDS
-          </button>
+        {/* Action controllers resetting mock data & Admin status */}
+        <div className="flex items-center gap-3">
+          {adminUser ? (
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+              <div className="px-3 py-1.5 flex items-center gap-2 font-mono text-[11px] text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>{adminUser.email}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-3.5 py-1.5 bg-red-650 hover:bg-red-550 active:bg-red-700 text-white text-xs font-sans font-bold rounded-lg transition-all cursor-pointer shadow"
+              >
+                LOGOUT
+              </button>
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-850 px-3 py-1.5 rounded-lg font-mono text-[10px] text-indigo-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>PROD ENGINE POOL ACTIVE</span>
+              </div>
+              <button
+                onClick={handleResetData}
+                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-slate-200 text-xs font-mono rounded-lg border border-slate-800 transition-all cursor-pointer"
+                title="Reset storage to default seeds"
+              >
+                RESET SEEDS
+              </button>
+            </div>
+          )}
         </div>
 
       </header>
@@ -251,13 +303,36 @@ export default function App() {
         )}
 
         {activePortal === 'admin' && (
-          <AdminFlow 
-            submissions={submissions}
-            questions={questions}
-            onAddQuestion={handleAddQuestion}
-            onDeleteQuestion={handleDeleteQuestion}
-            onRefreshSubmissions={syncPostgresSubmissions}
-          />
+          token ? (
+            <AdminFlow 
+              submissions={submissions}
+              questions={questions}
+              onAddQuestion={handleAddQuestion}
+              onDeleteQuestion={handleDeleteQuestion}
+              onRefreshSubmissions={syncPostgresSubmissions}
+            />
+          ) : (
+            <AdminLogin 
+              getApiUrl={(endpoint: string): string => {
+                const envUrl = (import.meta as any).env?.VITE_API_URL;
+                if (envUrl) {
+                  return `${envUrl.replace(/\/$/, '')}${endpoint}`;
+                }
+                return endpoint;
+              }}
+              onLoginSuccess={(jwtToken, loggedUser) => {
+                setToken(jwtToken);
+                setAdminUser(loggedUser);
+                localStorage.setItem('sa_admin_jwt', jwtToken);
+                localStorage.setItem('sa_admin_user', JSON.stringify(loggedUser));
+                
+                // Immediately synchronize the PostgreSQL RDS submissions
+                setTimeout(() => {
+                  syncPostgresSubmissions();
+                }, 50);
+              }}
+            />
+          )
         )}
 
         {activePortal === 'blueprints' && (
