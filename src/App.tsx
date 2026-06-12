@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CandidateFlow from './components/CandidateFlow';
 import AdminFlow from './components/AdminFlow';
-import AdminLogin from './components/AdminLogin';
+import AuthGate from './components/AuthGate';
 import ArchitectureBlueprints from './components/ArchitectureBlueprints';
 import { INITIAL_QUESTIONS, INITIAL_CANDIDATES } from './data/questions';
 import { CandidateAssessmentSubmission, Question } from './types';
@@ -215,6 +215,54 @@ export default function App() {
     }
   };
 
+  if (!token) {
+    return (
+      <div id="ai-studio-applet-root" className="min-h-screen bg-slate-905 text-slate-100 flex flex-col font-sans select-none antialiased">
+        <header className="bg-slate-950/95 border-b border-slate-850 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center border border-indigo-500/20">
+              <GraduationCap className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <span className="text-xs font-mono font-bold tracking-widest text-indigo-400">COHORT PLATFORM SECURE PORT</span>
+              <h1 className="text-sm font-sans tracking-tight font-extrabold text-white">Mentorship Platform Entry</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-900 border border-slate-850 px-3 py-1 text-slate-400 font-mono text-[10px] rounded-lg">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+            <span>RESTRICTED INGRESS</span>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <AuthGate
+            getApiUrl={(endpoint: string): string => {
+              const envUrl = (import.meta as any).env?.VITE_API_URL;
+              if (envUrl) {
+                return `${envUrl.replace(/\/$/, '')}${endpoint}`;
+              }
+              return endpoint;
+            }}
+            onLoginSuccess={(jwtToken, loggedUser) => {
+              setToken(jwtToken);
+              setAdminUser(loggedUser);
+              localStorage.setItem('sa_admin_jwt', jwtToken);
+              localStorage.setItem('sa_admin_user', JSON.stringify(loggedUser));
+              
+              if (loggedUser.email.toLowerCase() === 'admin@indiwebpros.in') {
+                setActivePortal('admin');
+              } else {
+                setActivePortal('candidate');
+              }
+            }}
+          />
+        </div>
+        <footer className="bg-slate-950 border-t border-slate-850 px-4 py-4 text-center text-[10px] font-mono text-slate-500 tracking-wider">
+          © 2026 COHORT EVALUATION & ASSESSMENT SYSTEM. TRACEABLE PRIVACY STANDARDS SECURED.
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div id="ai-studio-applet-root" className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans select-none antialiased">
       
@@ -236,27 +284,34 @@ export default function App() {
           </div>
         </div>
 
-        {/* Global Router Switch buttons */}
-        <div className="flex bg-slate-900 border border-slate-850 p-1 rounded-xl w-full md:w-auto">
-          {[
-            { id: 'candidate', label: 'Candidate Sandbox', icon: <GraduationCap className="w-4 h-4" /> },
-            { id: 'admin', label: 'Admin Console', icon: <BarChart2 className="w-4 h-4" /> },
-            { id: 'blueprints', label: 'Architecture & UX Wires', icon: <Layers className="w-4 h-4" /> }
-          ].map((portal) => (
-            <button
-              key={portal.id}
-              onClick={() => setActivePortal(portal.id as any)}
-              className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-sans font-bold transition-all whitespace-nowrap ${
-                activePortal === portal.id
-                  ? 'bg-indigo-600 text-slate-100 shadow'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              {portal.icon}
-              <span>{portal.label}</span>
-            </button>
-          ))}
-        </div>
+        {/* Global Router Switch buttons: Only render if logged in user is the primary admin */}
+        {adminUser && adminUser.email.toLowerCase() === 'admin@indiwebpros.in' ? (
+          <div className="flex bg-slate-900 border border-slate-850 p-1 rounded-xl w-full md:w-auto">
+            {[
+              { id: 'candidate', label: 'Candidate Sandbox', icon: <GraduationCap className="w-4 h-4" /> },
+              { id: 'admin', label: 'Admin Console', icon: <BarChart2 className="w-4 h-4" /> },
+              { id: 'blueprints', label: 'Architecture & UX Wires', icon: <Layers className="w-4 h-4" /> }
+            ].map((portal) => (
+              <button
+                key={portal.id}
+                onClick={() => setActivePortal(portal.id as any)}
+                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-sans font-bold transition-all whitespace-nowrap ${
+                  activePortal === portal.id
+                    ? 'bg-indigo-600 text-slate-100 shadow'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                {portal.icon}
+                <span>{portal.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex bg-slate-900/60 border border-slate-850 px-4 py-2 rounded-xl text-xs font-mono text-indigo-300 font-bold gap-2 items-center">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+            <span>CANDIDATE COHORT SANDBOX ACTIVE</span>
+          </div>
+        )}
 
         {/* Action controllers resetting mock data & Admin status */}
         <div className="flex items-center gap-3">
@@ -295,47 +350,25 @@ export default function App() {
       {/* Main Routing Stage Section */}
       <main className="flex-1 w-full bg-slate-950">
         
-        {activePortal === 'candidate' && (
+        {/* Strictly filter rendering: candidate mode for candidates; full choices for admin@indiwebpros.in */}
+        {(!adminUser || adminUser.email.toLowerCase() !== 'admin@indiwebpros.in' || activePortal === 'candidate') && (
           <CandidateFlow 
             onSubmissionComplete={handleCandidateSubmission}
             questions={questions}
           />
         )}
 
-        {activePortal === 'admin' && (
-          token ? (
-            <AdminFlow 
-              submissions={submissions}
-              questions={questions}
-              onAddQuestion={handleAddQuestion}
-              onDeleteQuestion={handleDeleteQuestion}
-              onRefreshSubmissions={syncPostgresSubmissions}
-            />
-          ) : (
-            <AdminLogin 
-              getApiUrl={(endpoint: string): string => {
-                const envUrl = (import.meta as any).env?.VITE_API_URL;
-                if (envUrl) {
-                  return `${envUrl.replace(/\/$/, '')}${endpoint}`;
-                }
-                return endpoint;
-              }}
-              onLoginSuccess={(jwtToken, loggedUser) => {
-                setToken(jwtToken);
-                setAdminUser(loggedUser);
-                localStorage.setItem('sa_admin_jwt', jwtToken);
-                localStorage.setItem('sa_admin_user', JSON.stringify(loggedUser));
-                
-                // Immediately synchronize the PostgreSQL RDS submissions
-                setTimeout(() => {
-                  syncPostgresSubmissions();
-                }, 50);
-              }}
-            />
-          )
+        {adminUser && adminUser.email.toLowerCase() === 'admin@indiwebpros.in' && activePortal === 'admin' && (
+          <AdminFlow 
+            submissions={submissions}
+            questions={questions}
+            onAddQuestion={handleAddQuestion}
+            onDeleteQuestion={handleDeleteQuestion}
+            onRefreshSubmissions={syncPostgresSubmissions}
+          />
         )}
 
-        {activePortal === 'blueprints' && (
+        {adminUser && adminUser.email.toLowerCase() === 'admin@indiwebpros.in' && activePortal === 'blueprints' && (
           <ArchitectureBlueprints />
         )}
 

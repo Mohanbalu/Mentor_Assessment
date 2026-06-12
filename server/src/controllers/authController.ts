@@ -9,45 +9,65 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sa_platform_super_secret_key_2026'
 export class AuthController {
   
   /**
-   * Register a new Recruiter or Organization Admin account
+   * Register a new Recruiter, Candidate or general administrator account
    */
   public async register(req: Request, res: Response): Promise<void> {
-    const { email, password, firstName, lastName, organizationName, subdomain } = req.body;
+    const { email, password, firstName, lastName } = req.body;
 
-    if (!email || !password || !firstName || !lastName || !organizationName || !subdomain) {
+    if (!email || !password) {
       res.status(400).json({
         status: 'error',
         code: 'MISSING_FIELDS',
-        message: 'All parameters (email, password, name, org, subdomain) are required.'
+        message: 'Email and password are required fields.'
       });
       return;
     }
 
-    console.log(`[Auth Controller] Registering organization: ${organizationName} and admin: ${email}`);
+    const cleanEmail = email.trim().toLowerCase();
+    console.log(`[Auth Controller] Registering general account: ${cleanEmail}`);
 
     try {
+      // Check if user already exists
+      const checkExists = await dbEngine.query(
+        `SELECT id FROM admins WHERE LOWER(email) = LOWER($1) LIMIT 1;`,
+        [cleanEmail]
+      );
+
+      if (checkExists.rowCount > 0) {
+        res.status(400).json({
+          status: 'error',
+          code: 'USER_EXISTS',
+          message: 'An account with this email address is already registered.'
+        });
+        return;
+      }
+
       const hash = bcrypt.hashSync(password, 10);
-      
-      // Seed dynamically or return success
+      const role = cleanEmail === 'admin@indiwebpros.in' ? 'SUPER_ADMIN' : 'CANDIDATE';
+
+      await dbEngine.query(
+        `INSERT INTO admins (email, password_hash, role) VALUES ($1, $2, $3);`,
+        [cleanEmail, hash, role]
+      );
+
       res.status(201).json({
         status: 'success',
-        message: 'Account configured and registered successfully.',
+        message: 'Account registered successfully. Please proceed to sign in.',
         data: {
           user: {
-            id: 'c1a9386c-4861-460d-88b9-fb75c2e5cf62',
-            email,
-            role: 'ORG_ADMIN',
-            firstName,
-            lastName,
-            organizationId: '50e200ba-065a-45c1-901d-7201bc3d043c'
+            email: cleanEmail,
+            role,
+            firstName: firstName || 'User',
+            lastName: lastName || ''
           }
         }
       });
     } catch (err: any) {
+      console.error('[Auth Controller Register FAIL]:', err);
       res.status(500).json({
         status: 'error',
         code: 'REGISTRATION_FAILED',
-        message: err.message || 'Server error occurred during organization register.'
+        message: err.message || 'Server error occurred during account registration.'
       });
     }
   }
@@ -70,18 +90,8 @@ export class AuthController {
     const cleanEmail = email.trim().toLowerCase();
     console.log(`[Auth Controller] Logging in: ${cleanEmail}`);
 
-    // Constraint: Only admin@indiwebpros.in may access the Admin Console
-    if (cleanEmail !== 'admin@indiwebpros.in') {
-      res.status(403).json({
-        status: 'error',
-        code: 'ACCESS_DENIED',
-        message: 'Access Denied. Only the primary administrator (admin@indiwebpros.in) is authorized to access the console.'
-      });
-      return;
-    }
-
     try {
-      // Find the admin user in PostgreSQL or Fallback memory DB
+      // Find user in the admins table
       const result = await dbEngine.query(
         `SELECT * FROM admins WHERE LOWER(email) = LOWER($1) LIMIT 1;`,
         [cleanEmail]
@@ -96,12 +106,12 @@ export class AuthController {
         return;
       }
 
-      const adminUser = result.rows[0];
+      const userRecord = result.rows[0];
 
       // Match bcrypt password hashes safely
-      const isMatch = bcrypt.compareSync(password, adminUser.password_hash);
+      const isMatch = bcrypt.compareSync(password, userRecord.password_hash);
       if (!isMatch) {
-        res.status(401).json({
+         res.status(401).json({
           status: 'error',
           code: 'INVALID_CREDENTIALS',
           message: 'Invalid email or password.'
@@ -110,11 +120,12 @@ export class AuthController {
       }
 
       // Encode JWT claims
+      const role = cleanEmail === 'admin@indiwebpros.in' ? 'SUPER_ADMIN' : 'CANDIDATE';
       const token = jwt.sign(
         {
-          id: adminUser.id,
-          email: adminUser.email,
-          role: 'SUPER_ADMIN'
+          id: userRecord.id,
+          email: userRecord.email,
+          role
         },
         JWT_SECRET,
         { expiresIn: '24h' }
@@ -125,11 +136,11 @@ export class AuthController {
         token,
         refreshToken: 'refresh-stub-1011',
         user: {
-          id: adminUser.id,
-          email: adminUser.email,
-          role: 'SUPER_ADMIN',
-          firstName: 'System',
-          lastName: 'Administrator'
+          id: userRecord.id,
+          email: userRecord.email,
+          role,
+          firstName: cleanEmail === 'admin@indiwebpros.in' ? 'System' : 'Cohort',
+          lastName: cleanEmail === 'admin@indiwebpros.in' ? 'Administrator' : 'Candidate'
         }
       });
     } catch (err: any) {

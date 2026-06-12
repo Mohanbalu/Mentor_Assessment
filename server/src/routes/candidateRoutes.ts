@@ -1,13 +1,34 @@
 // server/src/routes/candidateRoutes.ts - Router definition for candidate profiles and assessments with JWT secure filters
 import { Router } from 'express';
 import { candidateController } from '../controllers/candidateController';
+import { otpAuthController } from '../controllers/otpAuthController';
 import { authorizeJwt, restrictToRoles } from '../middlewares/auth';
 
 const router = Router();
 
 // =========================================================================
-// PUBLIC PORTS (Must remain public for sandbox candidate submission flows)
+// PUBLIC PORTS (Email verification and credential authentication routes)
 // =========================================================================
+router.post('/auth/register', (req, res, next) => {
+  otpAuthController.register(req, res).catch(next);
+});
+
+router.post('/auth/verify-otp', (req, res, next) => {
+  otpAuthController.verifyOtp(req, res).catch(next);
+});
+
+router.post('/auth/login', (req, res, next) => {
+  otpAuthController.login(req, res).catch(next);
+});
+
+router.post('/auth/admin-login', (req, res, next) => {
+  otpAuthController.adminLogin(req, res).catch(next);
+});
+
+router.post('/auth/admin-verify-otp', (req, res, next) => {
+  otpAuthController.adminVerifyOtp(req, res).catch(next);
+});
+
 router.post('/candidate-profile', (req, res, next) => {
   candidateController.saveProfile(req, res).catch(next);
 });

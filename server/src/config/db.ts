@@ -80,7 +80,20 @@ const memDatabase = {
       weaknesses: 'Temporal space complexity fine-tuning under high parallel connection buffers.',
       created_at: new Date('2026-06-11T12:45:00Z')
     }
-  ] as any[]
+  ] as any[],
+  users: [
+    {
+      id: 999,
+      first_name: 'Platform',
+      last_name: 'Admin',
+      email: 'admin@indiwebpros.in',
+      password_hash: bcrypt.hashSync('AdminPass123!', 10),
+      role: 'admin',
+      email_verified: true,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    }
+  ] as any[],
+  email_otps: [] as any[]
 };
 
 export class ProductionDatabaseEngine {
@@ -343,6 +356,28 @@ export class ProductionDatabaseEngine {
         strengths TEXT,
         weaknesses TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+
+      // 8. users
+      `CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        first_name VARCHAR(100),
+        last_name VARCHAR(100),
+        email VARCHAR(255) UNIQUE,
+        password_hash TEXT,
+        role VARCHAR(50) DEFAULT 'candidate',
+        email_verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+
+      // 9. email_otps
+      `CREATE TABLE IF NOT EXISTS email_otps (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        otp VARCHAR(10) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`
     ];
 
@@ -360,6 +395,17 @@ export class ProductionDatabaseEngine {
         await this.query(`
           INSERT INTO admins (email, password_hash, role) 
           VALUES ('admin@indiwebpros.in', $1, 'super_admin');
+        `, [hash]);
+      }
+
+      // Seed users table with admin credentials if not existing
+      const checkUserAdmin = await this.query(`SELECT id FROM users WHERE LOWER(email) = 'admin@indiwebpros.in' LIMIT 1;`);
+      if (checkUserAdmin.rowCount === 0) {
+        console.log('[Db Engine Schema Init] Seeding admin user record in users table');
+        const hash = bcrypt.hashSync('AdminPass123!', 10);
+        await this.query(`
+          INSERT INTO users (first_name, last_name, email, password_hash, role, email_verified)
+          VALUES ('Platform', 'Admin', 'admin@indiwebpros.in', $1, 'admin', TRUE);
         `, [hash]);
       }
 
@@ -806,6 +852,87 @@ export class ProductionDatabaseEngine {
         const attemptId = params[0];
         const filtered = memDatabase.coding_submissions.filter(c => c.attempt_id === attemptId);
         return { rows: filtered as T[], rowCount: filtered.length };
+      }
+
+      // Memory fallback queries for users & email_otps
+      if (sqlLower.includes('delete from users')) {
+        const email = (params[0] || '').trim().toLowerCase();
+        memDatabase.users = memDatabase.users.filter(u => u.email.toLowerCase() !== email || u.email_verified === true);
+        return { rows: [], rowCount: 1 };
+      }
+
+      if (sqlLower.includes('update users set email_verified')) {
+        const email = (params[0] || '').trim().toLowerCase();
+        memDatabase.users.forEach(u => {
+          if (u.email.toLowerCase() === email) {
+            u.email_verified = true;
+          }
+        });
+        return { rows: [], rowCount: 1 };
+      }
+
+      if (sqlLower.includes('from users')) {
+        let results = memDatabase.users;
+        if (sqlLower.includes('lower(email) = lower($1)') || sqlLower.includes('lower(email) = $1')) {
+          const email = (params[0] || '').trim().toLowerCase();
+          results = results.filter(u => u.email.toLowerCase() === email);
+        } else if (sqlLower.includes('email = $1')) {
+          const email = (params[0] || '').trim().toLowerCase();
+          results = results.filter(u => u.email.toLowerCase() === email);
+        }
+        return { rows: results as T[], rowCount: results.length };
+      }
+
+      if (sqlLower.includes('insert into users')) {
+        const newUser: any = {
+          id: memDatabase.users.length + 1,
+          first_name: params[0] || '',
+          last_name: params[1] || '',
+          email: params[2] || '',
+          password_hash: params[3] || '',
+          role: params[4] || 'candidate',
+          email_verified: params[5] === true || params[5] === 'true' || false,
+          created_at: new Date()
+        };
+        memDatabase.users.push(newUser);
+        return { rows: [newUser] as T[], rowCount: 1 };
+      }
+
+      if (sqlLower.includes('insert into email_otps')) {
+        const newOtp = {
+          id: memDatabase.email_otps.length + 1,
+          email: params[0],
+          otp: params[1],
+          expires_at: params[2] instanceof Date ? params[2] : new Date(params[2]),
+          verified: false,
+          created_at: new Date()
+        };
+        memDatabase.email_otps.push(newOtp);
+        return { rows: [newOtp] as T[], rowCount: 1 };
+      }
+
+      if (sqlLower.includes('from email_otps')) {
+        let results = memDatabase.email_otps;
+        if (sqlLower.includes('email = $1') && sqlLower.includes('otp = $2')) {
+          const email = (params[0] || '').trim().toLowerCase();
+          const otpStr = (params[1] || '').trim();
+          results = results.filter(o => o.email.toLowerCase() === email && o.otp === otpStr);
+        } else if (sqlLower.includes('email = $1')) {
+          const email = (params[0] || '').trim().toLowerCase();
+          results = results.filter(o => o.email.toLowerCase() === email);
+        }
+        return { rows: results as T[], rowCount: results.length };
+      }
+
+      if (sqlLower.includes('update email_otps')) {
+        const email = (params[0] || '').trim().toLowerCase();
+        const otpStr = (params[1] || '').trim();
+        memDatabase.email_otps.forEach(o => {
+          if (o.email.toLowerCase() === email && o.otp === otpStr) {
+            o.verified = true;
+          }
+        });
+        return { rows: [], rowCount: 1 };
       }
 
       // Default safe empty return
