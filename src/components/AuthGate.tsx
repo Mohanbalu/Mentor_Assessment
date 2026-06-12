@@ -572,36 +572,7 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
           </form>
         )}
 
-        {/* Developer Sandbox Debugging Credentials Badge */}
-        {!otpStep && (
-          <div className="pt-4 border-t border-slate-800/50 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">
-                Testing Accounts
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrefillCandidate}
-                  className="text-[9px] font-sans font-bold text-slate-300 hover:text-white flex items-center gap-1 bg-slate-800 border border-slate-700 px-2 py-1 rounded transition-all cursor-pointer"
-                >
-                  Prefill Candidate
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePrefillAdmin}
-                  className="text-[9px] font-sans font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded transition-all cursor-pointer"
-                >
-                  <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
-                  <span>Prefill Admin</span>
-                </button>
-              </div>
-            </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed font-mono bg-slate-950 p-2.5 rounded-lg border border-slate-850">
-              Admin: <span className="text-indigo-400 select-all font-bold">admin@indiwebpros.in</span> (Pass: <span className="text-indigo-400 select-all font-bold">AdminPass123!</span>)
-            </p>
-          </div>
-        )}
+        {/* Developer Sandbox Debugging Credentials Badge Removed */}
 
       </div>
     </div>
