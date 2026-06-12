@@ -74,6 +74,14 @@ export class OtpAuthController {
       return;
     }
 
+    if (!last_name || !last_name.trim()) {
+      res.status(400).json({
+        success: false,
+        message: 'Surname (Last Name) is required. Please provide your surname.'
+      });
+      return;
+    }
+
     const cleanEmail = email.trim().toLowerCase();
 
     try {
@@ -102,10 +110,11 @@ export class OtpAuthController {
       );
 
       const hash = bcrypt.hashSync(password, 10);
+      const fullName = `${first_name.trim()} ${last_name.trim()}`;
       await dbEngine.query(
-        `INSERT INTO users (first_name, last_name, email, password_hash, role, email_verified) 
-         VALUES ($1, $2, $3, $4, 'candidate', FALSE);`,
-        [first_name, last_name || '', cleanEmail, hash]
+        `INSERT INTO users (first_name, last_name, full_name, email, password_hash, role, email_verified) 
+         VALUES ($1, $2, $3, $4, $5, 'candidate', FALSE);`,
+        [first_name.trim(), last_name.trim(), fullName, cleanEmail, hash]
       );
 
       // Save the OTP record

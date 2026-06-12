@@ -80,6 +80,12 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
         }
       } else {
         // Registration Flow
+        if (!lastName || !lastName.trim()) {
+          setErrorMsg('Surname is required. Please add your last name or surname.');
+          setIsLoading(false);
+          return;
+        }
+
         console.log(`[AuthGate] Dispatching candidate profile declaration: ${cleanEmail}`);
         const url = getApiUrl('/api/auth/register');
 
@@ -322,7 +328,7 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">
-                    Last Name
+                    Surname / Last Name <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
@@ -330,6 +336,7 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
                     </span>
                     <input
                       type="text"
+                      required
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Doe"

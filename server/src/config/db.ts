@@ -363,6 +363,7 @@ export class ProductionDatabaseEngine {
         id SERIAL PRIMARY KEY,
         first_name VARCHAR(100),
         last_name VARCHAR(100),
+        full_name VARCHAR(255),
         email VARCHAR(255) UNIQUE,
         password_hash TEXT,
         role VARCHAR(50) DEFAULT 'candidate',
@@ -404,8 +405,8 @@ export class ProductionDatabaseEngine {
         console.log('[Db Engine Schema Init] Seeding admin user record in users table');
         const hash = bcrypt.hashSync('AdminPass123!', 10);
         await this.query(`
-          INSERT INTO users (first_name, last_name, email, password_hash, role, email_verified)
-          VALUES ('Platform', 'Admin', 'admin@indiwebpros.in', $1, 'admin', TRUE);
+          INSERT INTO users (first_name, last_name, full_name, email, password_hash, role, email_verified)
+          VALUES ('Platform', 'Admin', 'Platform Admin', 'admin@indiwebpros.in', $1, 'admin', TRUE);
         `, [hash]);
       }
 
@@ -884,18 +885,59 @@ export class ProductionDatabaseEngine {
       }
 
       if (sqlLower.includes('insert into users')) {
-        const newUser: any = {
+        const colStart = sqlLower.indexOf('(');
+        const colEnd = sqlLower.indexOf(')', colStart);
+        const valStart = sqlLower.indexOf('values', colEnd);
+        const valStartBrace = sqlLower.indexOf('(', valStart);
+        const valEndBrace = sqlLower.indexOf(')', valStartBrace);
+        
+        let cols: string[] = [];
+        let rawSqlVals: string[] = [];
+        
+        if (colStart !== -1 && colEnd !== -1) {
+          cols = sqlLower.substring(colStart + 1, colEnd).split(',').map(s => s.trim());
+        }
+        if (valStartBrace !== -1 && valEndBrace !== -1) {
+          rawSqlVals = sqlLower.substring(valStartBrace + 1, valEndBrace).split(',').map(s => s.trim());
+        }
+        
+        // Map parameter values to their column slots
+        let paramIndex = 0;
+        const record: any = {
           id: memDatabase.users.length + 1,
-          first_name: params[0] || '',
-          last_name: params[1] || '',
-          email: params[2] || '',
-          password_hash: params[3] || '',
-          role: params[4] || 'candidate',
-          email_verified: params[5] === true || params[5] === 'true' || false,
+          first_name: '',
+          last_name: '',
+          full_name: '',
+          email: '',
+          password_hash: '',
+          role: 'candidate',
+          email_verified: false,
           created_at: new Date()
         };
-        memDatabase.users.push(newUser);
-        return { rows: [newUser] as T[], rowCount: 1 };
+        
+        cols.forEach((col, idx) => {
+          const rawVal = rawSqlVals[idx] || '';
+          let val: any;
+          if (rawVal.includes('$')) {
+            val = params[paramIndex++];
+          } else {
+            // Remove single quotes from string literal
+            val = rawVal.replace(/'/g, '').trim();
+            if (val === 'true') val = true;
+            if (val === 'false') val = false;
+          }
+          
+          if (col === 'first_name') record.first_name = val;
+          if (col === 'last_name') record.last_name = val;
+          if (col === 'full_name') record.full_name = val;
+          if (col === 'email') record.email = val;
+          if (col === 'password_hash') record.password_hash = val;
+          if (col === 'role') record.role = val;
+          if (col === 'email_verified') record.email_verified = (val === true || val === 'true');
+        });
+        
+        memDatabase.users.push(record);
+        return { rows: [record] as T[], rowCount: 1 };
       }
 
       if (sqlLower.includes('insert into email_otps')) {
