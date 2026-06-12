@@ -300,8 +300,8 @@ export class AssessmentService {
         er.mindset_score,
         er.recommendation,
         er.strengths as reviewer_notes
-      FROM assessment_attempts aa
-      JOIN candidate_profiles cp ON aa.candidate_id = cp.id
+      FROM candidate_profiles cp
+      LEFT JOIN assessment_attempts aa ON cp.id = aa.candidate_id
       LEFT JOIN (
         SELECT candidate_id, expected_score,
                ROW_NUMBER() OVER(PARTITION BY candidate_id ORDER BY created_at DESC) as rn

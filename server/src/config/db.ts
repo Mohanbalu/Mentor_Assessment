@@ -834,17 +834,17 @@ export class ProductionDatabaseEngine {
 
       // getAttempts full list
       if (sqlLower.includes('select aa.id, aa.started_at, aa.submitted_at') && sqlLower.includes('assessment_attempts aa')) {
-        let rows = memDatabase.assessment_attempts.map(aa => {
-          const cp = memDatabase.candidate_profiles.find(p => p.id === aa.candidate_id) || {};
-          const er = memDatabase.evaluation_results.find(r => r.attempt_id === aa.id) || {};
+        let rows = memDatabase.candidate_profiles.map(cp => {
+          const aa = memDatabase.assessment_attempts.find(a => a.candidate_id === cp.id) || {};
+          const er = aa.id ? (memDatabase.evaluation_results.find(r => r.attempt_id === aa.id) || {}) : {};
           const pasObj = memDatabase.pre_assessment_scores.find(p => p.candidate_id === cp.id || p.session_id === aa.id) || {};
           return {
-            id: aa.id,
-            started_at: aa.started_at,
-            submitted_at: aa.submitted_at,
-            total_score: aa.total_score,
-            percentage: aa.percentage,
-            status: aa.status,
+            id: aa.id || null,
+            started_at: aa.started_at || null,
+            submitted_at: aa.submitted_at || null,
+            total_score: aa.total_score || null,
+            percentage: aa.percentage || null,
+            status: aa.status || 'Registered',
             candidate_profiles_id: cp.id,
             full_name: cp.full_name || 'Sandbox Dev',
             email: cp.email || 'sandbox@test.local',
@@ -858,7 +858,7 @@ export class ProductionDatabaseEngine {
             linkedin_url: cp.linkedin_url || '',
             resume_url: cp.resume_url || '',
             resume_filename: cp.resume_filename || '',
-            pre_assessment_score: pasObj.expected_score || '70-80',
+            pre_assessment_score: pasObj.expected_score || '75-85',
             aptitude_score: er.aptitude_score || 70,
             technical_score: er.technical_score || 75,
             coding_score: er.coding_score || 80,
