@@ -140,6 +140,11 @@ export class AssessmentService {
         submission.status || 'Evaluated'
       ]);
 
+      console.log('[DATA SAVED]');
+      console.log('Table Name: assessment_attempts');
+      console.log(`User ID: ${candidateId}`);
+      console.log(`Inserted Record ID: ${attemptId}`);
+
       // 4. Clear any stale answer registers to enable updates safely
       await dbQuery('DELETE FROM candidate_answers WHERE attempt_id = $1;', [attemptId]);
       await dbQuery('DELETE FROM coding_submissions WHERE attempt_id = $1;', [attemptId]);
@@ -214,10 +219,10 @@ export class AssessmentService {
       const strengths = 'Excellent technical design syntax layout and programmatic core foundations.';
       const weaknesses = 'Algorithmic efficiency adjustments under tight temporal and edge parameters.';
 
-      await dbQuery(`
+      const rEs = await dbQuery(`
         INSERT INTO evaluation_results (
           attempt_id, aptitude_score, technical_score, coding_score, mindset_score, final_score, recommendation, strengths, weaknesses
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id;
       `, [
         attemptId,
         parseFloat(aptScore.toString()),
@@ -229,6 +234,12 @@ export class AssessmentService {
         evalData.reviewerNotes || strengths,
         weaknesses
       ]);
+
+      const evalId = (rEs.rows && rEs.rows.length > 0) ? (rEs.rows[0] as any).id : '999';
+      console.log('[DATA SAVED]');
+      console.log('Table Name: evaluation_results');
+      console.log(`User ID: ${candidateId}`);
+      console.log(`Inserted Record ID: ${evalId}`);
 
       console.log(`[Assessment Service] Submission stored beautifully for attempt: ${attemptId}`);
 

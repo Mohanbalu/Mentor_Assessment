@@ -45,6 +45,14 @@ router.post('/candidate-assessment-submit', (req, res, next) => {
   candidateController.submitAssessment(req, res).catch(next);
 });
 
+router.post('/pre-assessment-score', (req, res, next) => {
+  candidateController.savePreAssessmentScore(req, res).catch(next);
+});
+
+router.post('/screen-responses', (req, res, next) => {
+  candidateController.saveScreenResponses(req, res).catch(next);
+});
+
 // =========================================================================
 // SECURE GUARDED GATEWAYS (Only matching admin@indiwebpros.in in JWT)
 // =========================================================================

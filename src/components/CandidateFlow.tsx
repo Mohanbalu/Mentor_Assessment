@@ -32,6 +32,115 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   // 14: Submission Success Page
   const [currentScreen, setCurrentScreen] = useState<number>(0);
 
+  const [sessionId, setSessionId] = useState<string>(() => {
+    const cached = localStorage.getItem('candidate_session_id');
+    if (cached) return cached;
+    const newSess = 'sess-' + Math.random().toString(36).substring(2, 12);
+    localStorage.setItem('candidate_session_id', newSess);
+    return newSess;
+  });
+
+  const [candidateDbId, setCandidateDbId] = useState<number | null>(() => {
+    const cached = localStorage.getItem('candidate_db_id');
+    return cached ? parseInt(cached, 10) : null;
+  });
+
+  const handleSavePreAssessmentScore = async (scoreVal: string) => {
+    try {
+      const targetUrl = getApiUrl('/api/pre-assessment-score');
+      console.log(`[Pre-Assessment Save] Sending score to ${targetUrl}:`, { session_id: sessionId, expected_score: scoreVal, candidate_id: candidateDbId });
+      
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          expected_score: scoreVal,
+          candidate_id: candidateDbId
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to save pre-assessment score.');
+      }
+      
+      console.log('[Pre-Assessment Save] Score saved successfully.');
+    } catch (err) {
+      console.error('[Pre-Assessment Save Error] Failed:', err);
+    }
+    // Always advance to welcome page
+    setCurrentScreen(1);
+  };
+
+  const handleSaveSectionResponses = async (screenIdx: number): Promise<boolean> => {
+    try {
+      const activeQs = getQuestionsBySection(screenIdx);
+      const apiPayloadResponses = activeQs.map(q => {
+        const resp = responses.find(r => r.questionId === q.id) || {};
+        return {
+          questionId: q.id,
+          selectedOption: resp.selectedOption || null,
+          textAnswer: resp.textAnswer || null,
+          codeAnswer: resp.codeAnswer || null,
+          languageSelected: resp.languageSelected || null
+        };
+      });
+
+      const bodyPayload = {
+        session_id: sessionId,
+        candidate_id: candidateDbId,
+        screen_index: screenIdx,
+        responses: apiPayloadResponses
+      };
+
+      const targetUrl = getApiUrl('/api/screen-responses');
+      console.log(`[Screen Save] Saving Screen ${screenIdx} to ${targetUrl}:`, bodyPayload);
+
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to save screen ${screenIdx} progress to backend.`);
+      }
+
+      console.log(`[Screen Save] Screen ${screenIdx} saved successfully.`);
+      return true;
+    } catch (err) {
+      console.error(`[Screen Save Error] Failed to persist progress:`, err);
+      return false;
+    }
+  };
+
+  const advanceWithSave = async () => {
+    if (currentScreen === 4) {
+      // Save Self-Assessment screen responses
+      try {
+        const payloadResponses = Object.entries(selfAssessment).map(([key, val]) => ({
+          questionId: `self-rating-${key}`,
+          selectedOption: val.toString()
+        }));
+        await fetch(getApiUrl('/api/screen-responses'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            candidate_id: candidateDbId,
+            screen_index: 4,
+            responses: payloadResponses
+          })
+        });
+      } catch (err) {
+        console.error('Failed to save self-assessment ratings:', err);
+      }
+    } else if (currentScreen >= 5 && currentScreen <= 12) {
+      await handleSaveSectionResponses(currentScreen);
+    }
+    setCurrentScreen(prev => prev + 1);
+  };
+
   // Candidate state structures
   const [predictedScore, setPredictedScore] = useState<string>('60-80');
   const [agreedToInstructions, setAgreedToInstructions] = useState<boolean>(false);
@@ -264,7 +373,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
 
     if (secondsLeft <= 0) {
       // Auto-advance screen on timeout!
-      setCurrentScreen(prev => prev + 1);
+      advanceWithSave();
       return;
     }
 
@@ -616,7 +725,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
             </div>
 
             <button
-              onClick={() => setCurrentScreen(1)}
+              onClick={() => handleSavePreAssessmentScore(predictedScore)}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 text-sm font-bold flex items-center justify-center gap-2 border border-indigo-500/30 font-sans transition-all cursor-pointer"
             >
               Continue
@@ -995,7 +1104,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                 Back
               </button>
               <button
-                onClick={() => setCurrentScreen(5)}
+                onClick={advanceWithSave}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 text-sm font-bold flex items-center justify-center gap-2 border border-indigo-500/30 transition-all cursor-pointer"
               >
                 Continue
@@ -1115,7 +1224,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   </span>
                   
                   <button
-                    onClick={() => setCurrentScreen(prev => prev + 1)}
+                    onClick={advanceWithSave}
                     className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-slate-100 text-xs font-sans font-bold flex items-center gap-1.5 rounded-xl transition-all border border-indigo-500/30 cursor-pointer"
                   >
                     Next Section
@@ -1230,7 +1339,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
               </span>
               
               <button
-                onClick={() => setCurrentScreen(11)}
+                onClick={advanceWithSave}
                 className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-slate-100 text-xs font-sans font-bold flex items-center gap-1.5 rounded-xl transition-all border border-indigo-500/30 cursor-pointer"
               >
                 PROMPT ENGINEERING ROUND
@@ -1281,7 +1390,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
               </span>
               
               <button
-                onClick={() => setCurrentScreen(12)}
+                onClick={advanceWithSave}
                 className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-slate-100 text-xs font-sans font-bold flex items-center gap-1.5 rounded-xl transition-all border border-indigo-500/30 cursor-pointer"
               >
                 MINDSET ROUND
@@ -1332,7 +1441,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
               </span>
               
               <button
-                onClick={() => setCurrentScreen(13)}
+                onClick={advanceWithSave}
                 className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-slate-100 text-xs font-sans font-bold flex items-center gap-1.5 rounded-xl transition-all border border-indigo-500/30 cursor-pointer"
               >
                 REVIEW & SUBMIT

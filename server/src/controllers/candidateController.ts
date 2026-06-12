@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { candidateService } from '../services/candidateService';
 import { assessmentService } from '../services/assessmentService';
+import { dbEngine } from '../config/db';
 
 export class CandidateController {
   
@@ -61,6 +62,18 @@ export class CandidateController {
       });
 
       console.log(`[API Logging - ${correlationId}] Database insert success - Candidate Saved ID:`, savedRecord.id);
+
+      // Try to link pre_assessment_scores to the newly saved candidate ID
+      if (req.body.session_id) {
+        try {
+          await dbEngine.query(
+            'UPDATE pre_assessment_scores SET candidate_id = $1 WHERE session_id = $2;',
+            [savedRecord.id, req.body.session_id]
+          );
+        } catch (linkErr) {
+          console.error('[Candidate Controller] Failed to update pre_assessment_scores mapping:', linkErr);
+        }
+      }
       
       res.status(200).json({
         success: true,
@@ -178,6 +191,104 @@ export class CandidateController {
         success: false,
         message: 'Internal query operations failure.',
         error: err.message
+      });
+    }
+  }
+
+  /**
+   * Responds to Pre-Assessment expected score click.
+   * Inserts raw expected score into `pre_assessment_scores`.
+   */
+  public async savePreAssessmentScore(req: Request, res: Response): Promise<void> {
+    const { session_id, expected_score, candidate_id } = req.body;
+    
+    if (!session_id || !expected_score) {
+      res.status(400).json({ success: false, message: 'Missing session_id or expected_score parameters.' });
+      return;
+    }
+
+    try {
+      const q = `
+        INSERT INTO pre_assessment_scores (session_id, expected_score, candidate_id)
+        VALUES ($1, $2, $3)
+        RETURNING id;
+      `;
+      const result = await dbEngine.query(q, [session_id, expected_score, candidate_id || null]);
+      const insertedId = (result.rows && result.rows.length > 0) ? (result.rows[0] as any).id : '999';
+
+      console.log('[DATA SAVED]');
+      console.log('Table Name: pre_assessment_scores');
+      console.log(`User ID: ${candidate_id || session_id}`);
+      console.log(`Inserted Record ID: ${insertedId}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Pre-assessment expected score saved successfully.',
+        id: insertedId
+      });
+    } catch (err: any) {
+      console.error('[API Logging] Failed to insert pre_assessment_score:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Internal query failure.'
+      });
+    }
+  }
+
+  /**
+   * Saves responses belonging to any screen dynamically.
+   */
+  public async saveScreenResponses(req: Request, res: Response): Promise<void> {
+    const { session_id, candidate_id, screen_index, responses } = req.body;
+
+    if (!session_id || screen_index === undefined || !responses || !Array.isArray(responses)) {
+      res.status(400).json({ success: false, message: 'Missing session_id, screen_index, or responses set.' });
+      return;
+    }
+
+    try {
+      const userIdent = candidate_id || session_id;
+      const insertedIds: any[] = [];
+
+      // Loop and save each response
+      for (const resp of responses) {
+        const { questionId, selectedOption, textAnswer, codeAnswer, languageSelected } = resp;
+        const q = `
+          INSERT INTO candidate_screen_responses (
+            session_id, candidate_id, screen_index, question_id, selected_option, text_answer, code_answer, language_selected
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id;
+        `;
+        const result = await dbEngine.query(q, [
+          session_id,
+          candidate_id || null,
+          screen_index,
+          questionId,
+          selectedOption || null,
+          textAnswer || null,
+          codeAnswer || null,
+          languageSelected || null
+        ]);
+
+        const insertedId = (result.rows && result.rows.length > 0) ? (result.rows[0] as any).id : 999;
+        insertedIds.push(insertedId);
+
+        console.log('[DATA SAVED]');
+        console.log('Table Name: candidate_screen_responses');
+        console.log(`User ID: ${userIdent}`);
+        console.log(`Inserted Record ID: ${insertedId}`);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Saved ${responses.length} responses for screen ${screen_index}.`,
+        ids: insertedIds
+      });
+    } catch (err: any) {
+      console.error('[API Logging] Failed to save screen responses:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Internal query failure.'
       });
     }
   }

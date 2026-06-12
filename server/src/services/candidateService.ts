@@ -68,8 +68,13 @@ export class CandidateService {
     try {
       const result = await dbEngine.query(queryStr, params);
       if (result.rowCount && result.rowCount > 0) {
-        console.log('[Candidate Service] Database insert success:', result.rows[0]);
-        return result.rows[0];
+        const savedCand = result.rows[0] as any;
+        console.log('[Candidate Service] Database insert success:', savedCand);
+        console.log('[DATA SAVED]');
+        console.log('Table Name: candidate_profiles');
+        console.log(`User ID: ${savedCand.id}`);
+        console.log(`Inserted Record ID: ${savedCand.id}`);
+        return savedCand;
       }
       throw new Error('No rows returned from query execution insert.');
     } catch (error) {

@@ -93,7 +93,9 @@ const memDatabase = {
       created_at: new Date('2026-06-11T12:00:00Z')
     }
   ] as any[],
-  email_otps: [] as any[]
+  email_otps: [] as any[],
+  pre_assessment_scores: [] as any[],
+  candidate_screen_responses: [] as any[]
 };
 
 export class ProductionDatabaseEngine {
@@ -378,6 +380,29 @@ export class ProductionDatabaseEngine {
         otp VARCHAR(10) NOT NULL,
         expires_at TIMESTAMP NOT NULL,
         verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+
+      // 10. pre_assessment_scores
+      `CREATE TABLE IF NOT EXISTS pre_assessment_scores (
+        id SERIAL PRIMARY KEY,
+        session_id VARCHAR(100) NOT NULL,
+        candidate_id INT,
+        expected_score VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+
+      // 11. candidate_screen_responses
+      `CREATE TABLE IF NOT EXISTS candidate_screen_responses (
+        id SERIAL PRIMARY KEY,
+        session_id VARCHAR(100) NOT NULL,
+        candidate_id INT,
+        screen_index INT NOT NULL,
+        question_id VARCHAR(100) NOT NULL,
+        selected_option TEXT,
+        text_answer TEXT,
+        code_answer TEXT,
+        language_selected VARCHAR(50),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`
     ];
@@ -678,6 +703,37 @@ export class ProductionDatabaseEngine {
       if (sqlLower.startsWith('delete from candidate_answers')) {
         memDatabase.candidate_answers = memDatabase.candidate_answers.filter(a => a.attempt_id !== params[0]);
         return { rows: [], rowCount: 1 };
+      }
+      
+      // INSERT INTO pre_assessment_scores
+      if (sqlLower.includes('insert into pre_assessment_scores')) {
+        const newRecord = {
+          id: memDatabase.pre_assessment_scores.length + 1,
+          session_id: params[0],
+          expected_score: params[1],
+          candidate_id: params[2] || null,
+          created_at: new Date()
+        };
+        memDatabase.pre_assessment_scores.push(newRecord);
+        return { rows: [newRecord] as T[], rowCount: 1 };
+      }
+
+      // INSERT INTO candidate_screen_responses
+      if (sqlLower.includes('insert into candidate_screen_responses')) {
+        const newRecord = {
+          id: memDatabase.candidate_screen_responses.length + 1,
+          session_id: params[0],
+          candidate_id: params[1] || null,
+          screen_index: params[2],
+          question_id: params[3],
+          selected_option: params[4] || null,
+          text_answer: params[5] || null,
+          code_answer: params[6] || null,
+          language_selected: params[7] || null,
+          created_at: new Date()
+        };
+        memDatabase.candidate_screen_responses.push(newRecord);
+        return { rows: [newRecord] as T[], rowCount: 1 };
       }
       if (sqlLower.startsWith('delete from coding_submissions')) {
         memDatabase.coding_submissions = memDatabase.coding_submissions.filter(a => a.attempt_id !== params[0]);
