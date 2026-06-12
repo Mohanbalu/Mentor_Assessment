@@ -45,7 +45,7 @@ export default function App() {
   const [submissions, setSubmissions] = useState<CandidateAssessmentSubmission[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
 
-  // Initialize data structures from LocalStorage fallback triggers
+  // Initialize data structures from LocalStorage fallback triggers combined with dynamic PostgreSQL sync
   useEffect(() => {
     const cachedSubs = localStorage.getItem('sa_platform_submissions_v2');
     const cachedQuests = localStorage.getItem('sa_platform_questions_v2');
@@ -61,16 +61,51 @@ export default function App() {
       localStorage.setItem('sa_platform_submissions_v2', JSON.stringify(INITIAL_CANDIDATES));
     }
 
-    if (cachedQuests) {
+    // Attempt to load questions from backend API first to satisfy audit dynamics
+    const loadQuestionsFromBackend = async () => {
       try {
-        setQuestions(JSON.parse(cachedQuests));
-      } catch (e) {
-        setQuestions(INITIAL_QUESTIONS);
+        const url = getApiUrl('/api/questions');
+        console.log('[System Loader] Loading questions from PostgreSQL database:', url);
+        const res = await fetch(url);
+        if (res.ok) {
+          const resJson = await res.json();
+          if (resJson.success && Array.isArray(resJson.data) && resJson.data.length > 0) {
+            console.log(`[System Loader] Successfully loaded ${resJson.data.length} questions dynamically from PostgreSQL database.`);
+            
+            // Map keys of database rows to match frontend Question schema (e.g. options_json)
+            const mappedQuestions = resJson.data.map((row: any) => ({
+              id: row.id,
+              assessment_id: row.assessment_id,
+              questionText: row.question_text || row.questionText,
+              questionType: row.question_type || row.questionType,
+              options: row.options_json ? JSON.parse(row.options_json) : (row.options || []),
+              correctAnswer: row.correct_answer || row.correctAnswer,
+              marks: row.marks
+            }));
+            
+            setQuestions(mappedQuestions);
+            localStorage.setItem('sa_platform_questions_v2', JSON.stringify(mappedQuestions));
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[System Loader] Failed to load questions dynamically. Falling back to cached state/defaults.', err);
       }
-    } else {
-      setQuestions(INITIAL_QUESTIONS);
-      localStorage.setItem('sa_platform_questions_v2', JSON.stringify(INITIAL_QUESTIONS));
-    }
+
+      // Local storage or default fallback if backend fails or has no rows
+      if (cachedQuests) {
+        try {
+          setQuestions(JSON.parse(cachedQuests));
+        } catch (e) {
+          setQuestions(INITIAL_QUESTIONS);
+        }
+      } else {
+        setQuestions(INITIAL_QUESTIONS);
+        localStorage.setItem('sa_platform_questions_v2', JSON.stringify(INITIAL_QUESTIONS));
+      }
+    };
+
+    loadQuestionsFromBackend();
   }, []);
 
   // Synchronizes full state records from PostgreSQL RDS

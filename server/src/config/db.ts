@@ -51,7 +51,88 @@ const memDatabase = {
       created_at: new Date('2026-06-11T12:00:00Z')
     }
   ] as any[],
-  questions: [] as any[],
+  questions: [
+    {
+      id: 'apt-1',
+      assessment_id: 'asm-1',
+      question_text: 'A train 120m long passes a telegraph post in 6 seconds. Find the speed of the train in km/h.',
+      question_type: 'aptitude_mcq',
+      options_json: JSON.stringify(['36 km/h', '54 km/h', '72 km/h', '90 km/h']),
+      correct_answer: '72 km/h',
+      marks: 10,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: 'apt-2',
+      assessment_id: 'asm-1',
+      question_text: 'If 12 men can build a wall in 20 days, how many men will be required to build the same wall in 15 days?',
+      question_type: 'aptitude_mcq',
+      options_json: JSON.stringify(['15 men', '16 men', '18 men', '24 men']),
+      correct_answer: '16 men',
+      marks: 10,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: 'prog-1',
+      assessment_id: 'asm-1',
+      question_text: 'Which of the following describes the OOP concept "Polymorphism"?',
+      question_type: 'technical_mcq',
+      options_json: JSON.stringify([
+        'Hiding internal implementation details',
+        'Creating a child class from a parent class',
+        'The ability of different classes to respond to the same message in unique ways',
+        'Restricting direct access to some of an object\'s components'
+      ]),
+      correct_answer: 'The ability of different classes to respond to the same message in unique ways',
+      marks: 10,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: 'web-1',
+      assessment_id: 'asm-1',
+      question_text: 'What is the purpose of React\'s "useEffect" cleanup function?',
+      question_type: 'technical_mcq',
+      options_json: JSON.stringify([
+        'To prevent the component from rendering again',
+        'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs',
+        'To force React to re-fetch state from the server',
+        'To reset initial props parameters'
+      ]),
+      correct_answer: 'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs',
+      marks: 10,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: 'dsa-1',
+      assessment_id: 'asm-1',
+      question_text: 'What is the worst-case time complexity of inserting an element into a balanced Binary Search Tree (such as an AVL tree) of size N?',
+      question_type: 'technical_mcq',
+      options_json: JSON.stringify(['O(1)', 'O(log N)', 'O(N)', 'O(N log N)']),
+      correct_answer: 'O(log N)',
+      marks: 10,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: 'coding-1',
+      assessment_id: 'asm-1',
+      question_text: 'Write a JavaScript function "fizzBuzz(n)" that returns an array of strings from 1 to n with appropriate Fizz/Buzz/FizzBuzz replacements.',
+      question_type: 'coding',
+      options_json: null,
+      correct_answer: null,
+      marks: 10,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: 'mindset-1',
+      assessment_id: 'asm-1',
+      question_text: 'Describe a situation where a major bug reached production under your watch. What remediation steps and professional communications did you lead?',
+      question_type: 'mindset',
+      options_json: null,
+      correct_answer: null,
+      marks: 10,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    }
+  ] as any[],
   assessment_attempts: [
     {
       id: 'attempt-demo-1',
@@ -95,7 +176,8 @@ const memDatabase = {
   ] as any[],
   email_otps: [] as any[],
   pre_assessment_scores: [] as any[],
-  candidate_screen_responses: [] as any[]
+  candidate_screen_responses: [] as any[],
+  results: [] as any[]
 };
 
 export class ProductionDatabaseEngine {
@@ -295,7 +377,9 @@ export class ProductionDatabaseEngine {
         title VARCHAR(255) NOT NULL,
         description TEXT,
         assessment_type VARCHAR(100),
+        type VARCHAR(100),
         duration_minutes INT,
+        duration INT,
         total_marks INT DEFAULT 100,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
@@ -328,23 +412,29 @@ export class ProductionDatabaseEngine {
       `CREATE TABLE IF NOT EXISTS candidate_answers (
         id SERIAL PRIMARY KEY,
         attempt_id VARCHAR(100) REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+        candidate_id INT REFERENCES candidate_profiles(id) ON DELETE CASCADE,
         question_id VARCHAR(100) REFERENCES questions(id) ON DELETE CASCADE,
         answer_text TEXT,
+        answer TEXT,
         obtained_marks INT DEFAULT 0,
         evaluated_by_ai BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
 
       // 6. coding_submissions
       `CREATE TABLE IF NOT EXISTS coding_submissions (
         id SERIAL PRIMARY KEY,
         attempt_id VARCHAR(100) REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+        candidate_id INT REFERENCES candidate_profiles(id) ON DELETE CASCADE,
         question_id VARCHAR(100) REFERENCES questions(id) ON DELETE CASCADE,
         source_code TEXT,
+        code TEXT,
         language VARCHAR(50),
         execution_result TEXT,
         score INT DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`,
 
       // 7. evaluation_results
@@ -406,6 +496,16 @@ export class ProductionDatabaseEngine {
         code_answer TEXT,
         language_selected VARCHAR(50),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+
+      // 12. results
+      `CREATE TABLE IF NOT EXISTS results (
+        id SERIAL PRIMARY KEY,
+        candidate_id INT REFERENCES candidate_profiles(id) ON DELETE CASCADE,
+        assessment_id VARCHAR(100) REFERENCES assessments(id) ON DELETE CASCADE,
+        score NUMERIC(5,2),
+        percentage NUMERIC(5,2),
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );`
     ];
 
@@ -421,13 +521,29 @@ export class ProductionDatabaseEngine {
     }
     console.log('[Db Engine Schema Init] All table templates processed.');
 
-    // Alter candidate_profiles table to ensure columns resume_url and resume_filename exist in case db exists
+    // Migration and column assertions
     try {
+      // Alter candidate_profiles table to ensure columns resume_url and resume_filename exist in case db exists
       await this.query(`ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS resume_url TEXT;`);
       await this.query(`ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS resume_filename VARCHAR(255);`);
-      console.log('[Db Engine Schema Init] Candidate profiles migration columns successfully checked/added.');
+      
+      // Alter assessments to ensure type and duration exist
+      await this.query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS type VARCHAR(100);`);
+      await this.query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS duration INT;`);
+
+      // Alter candidate_answers to ensure candidate_id, answer, and submitted_at exist
+      await this.query(`ALTER TABLE candidate_answers ADD COLUMN IF NOT EXISTS candidate_id INT;`);
+      await this.query(`ALTER TABLE candidate_answers ADD COLUMN IF NOT EXISTS answer TEXT;`);
+      await this.query(`ALTER TABLE candidate_answers ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
+
+      // Alter coding_submissions to ensure candidate_id, code, and submitted_at exist
+      await this.query(`ALTER TABLE coding_submissions ADD COLUMN IF NOT EXISTS candidate_id INT;`);
+      await this.query(`ALTER TABLE coding_submissions ADD COLUMN IF NOT EXISTS code TEXT;`);
+      await this.query(`ALTER TABLE coding_submissions ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
+
+      console.log('[Db Engine Schema Init] Audit migration columns successfully checked/added.');
     } catch (migErr: any) {
-      console.warn('[Db Engine Schema Init] Candidate profiles alter execution warning:', migErr.message || migErr);
+      console.warn('[Db Engine Schema Init] Audit alter execution warning:', migErr.message || migErr);
     }
 
     // Seed admins table with initial super_admin config
@@ -577,6 +693,11 @@ export class ProductionDatabaseEngine {
       if (sqlLower.includes('select id from assessments')) {
         const found = memDatabase.assessments.filter(a => a.id === 'asm-1');
         return { rows: found as T[], rowCount: found.length };
+      }
+
+      // SELECT from questions
+      if (sqlLower.includes('from questions')) {
+        return { rows: memDatabase.questions as T[], rowCount: memDatabase.questions.length };
       }
 
       // INSERT INTO assessments
@@ -782,29 +903,37 @@ export class ProductionDatabaseEngine {
 
       // INSERT INTO candidate_answers
       if (sqlLower.includes('insert into candidate_answers')) {
+        const isScreenSave = (typeof params[0] === 'number' || params[0] === null);
         memDatabase.candidate_answers.push({
           id: memDatabase.candidate_answers.length + 1,
-          attempt_id: params[0],
+          candidate_id: isScreenSave ? params[0] : null,
+          attempt_id: isScreenSave ? null : params[0],
           question_id: params[1],
-          answer_text: params[2],
-          obtained_marks: params[3] || 0,
-          evaluated_by_ai: params[4] || false,
-          created_at: new Date()
+          answer: isScreenSave ? params[2] : null,
+          answer_text: isScreenSave ? params[3] : params[2],
+          obtained_marks: isScreenSave ? 0 : (params[3] || 0),
+          evaluated_by_ai: isScreenSave ? false : (params[4] || false),
+          created_at: new Date(),
+          submitted_at: new Date()
         });
         return { rows: [], rowCount: 1 };
       }
 
       // INSERT INTO coding_submissions
       if (sqlLower.includes('insert into coding_submissions')) {
+        const isScreenSave = (typeof params[0] === 'number' || params[0] === null);
         memDatabase.coding_submissions.push({
           id: memDatabase.coding_submissions.length + 1,
-          attempt_id: params[0],
+          candidate_id: isScreenSave ? params[0] : null,
+          attempt_id: isScreenSave ? null : params[0],
           question_id: params[1],
-          source_code: params[2],
-          language: params[3],
-          execution_result: params[4],
-          score: params[5] || 0,
-          created_at: new Date()
+          code: isScreenSave ? params[2] : null,
+          source_code: isScreenSave ? params[3] : params[2],
+          language: isScreenSave ? params[4] : params[3],
+          execution_result: isScreenSave ? null : params[4],
+          score: isScreenSave ? 0 : (params[5] || 0),
+          created_at: new Date(),
+          submitted_at: new Date()
         });
         return { rows: [], rowCount: 1 };
       }
@@ -823,6 +952,19 @@ export class ProductionDatabaseEngine {
           strengths: params[7],
           weaknesses: params[8],
           created_at: new Date()
+        });
+        return { rows: [], rowCount: 1 };
+      }
+
+      // INSERT INTO results
+      if (sqlLower.includes('insert into results')) {
+        memDatabase.results.push({
+          id: memDatabase.results.length + 1,
+          candidate_id: params[0],
+          assessment_id: params[1],
+          score: params[2],
+          percentage: params[3],
+          submitted_at: new Date()
         });
         return { rows: [], rowCount: 1 };
       }

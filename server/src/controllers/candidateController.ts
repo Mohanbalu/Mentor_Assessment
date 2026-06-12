@@ -285,6 +285,37 @@ export class CandidateController {
         console.log('Table Name: candidate_screen_responses');
         console.log(`User ID: ${userIdent}`);
         console.log(`Inserted Record ID: ${insertedId}`);
+
+        // Extract answers
+        const answerVal = selectedOption || textAnswer || codeAnswer || '';
+        
+        // 1. Every candidate answer MUST be stored in candidate_answers table
+        try {
+          await dbEngine.query(`
+            INSERT INTO candidate_answers (candidate_id, question_id, answer, answer_text, submitted_at)
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+          `, [candidate_id || null, questionId, answerVal, answerVal]);
+          
+          // Requirement 6: Add backend API logging for answer save
+          console.log(`[API Logging] Answer save: Candidate ID ${candidate_id || 'null'}, Question ID ${questionId}, Answer: ${answerVal.substring(0, 100)}`);
+        } catch (ansErr: any) {
+          console.error(`[API Logging] Failure saving to candidate_answers for Q ${questionId}:`, ansErr.message || ansErr);
+        }
+
+        // 2. Every coding answer MUST be stored in coding_submissions table
+        if (codeAnswer || questionId.startsWith('coding')) {
+          try {
+            await dbEngine.query(`
+              INSERT INTO coding_submissions (candidate_id, question_id, code, source_code, language, submitted_at)
+              VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+            `, [candidate_id || null, questionId, codeAnswer || '', codeAnswer || '', languageSelected || 'javascript']);
+            
+            // Requirement 6: Add backend API logging for coding submission save
+            console.log(`[API Logging] Coding submission save: Candidate ID ${candidate_id || 'null'}, Question ID ${questionId}, Code length: ${codeAnswer?.length || 0}`);
+          } catch (codeErr: any) {
+            console.error(`[API Logging] Failure saving to coding_submissions for Q ${questionId}:`, codeErr.message || codeErr);
+          }
+        }
       }
 
       res.status(200).json({
@@ -348,6 +379,27 @@ export class CandidateController {
       res.status(500).json({
         success: false,
         message: err.message || 'Failed to upload resume to S3.'
+      });
+    }
+  }
+
+  /**
+   * Retrieves all predefined questions from the PostgreSQL questions table with API logging
+   */
+  public async getQuestions(req: Request, res: Response): Promise<void> {
+    console.log('[API Logging] Question load requested: FETCH questions from PostgreSQL');
+    try {
+      const result = await dbEngine.query('SELECT * FROM questions ORDER BY id;');
+      console.log(`[API Logging] Question load success: fetched ${result.rows.length} questions from PostgreSQL.`);
+      res.status(200).json({
+        success: true,
+        data: result.rows
+      });
+    } catch (err: any) {
+      console.error('[API Logging] Failed to load questions:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve assessment questions from database'
       });
     }
   }

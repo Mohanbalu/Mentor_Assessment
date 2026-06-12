@@ -75,6 +75,10 @@ router.post('/upload-resume', (req, res, next) => {
   });
 });
 
+router.get('/questions', (req, res, next) => {
+  candidateController.getQuestions(req, res).catch(next);
+});
+
 router.post('/candidate-assessment-submit', (req, res, next) => {
   candidateController.submitAssessment(req, res).catch(next);
 });

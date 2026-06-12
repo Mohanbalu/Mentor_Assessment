@@ -105,14 +105,16 @@ export class AssessmentService {
       // 2. Resolve Assessment definition (Default 'asm-1')
       const assessmentId = 'asm-1'; 
       await dbQuery(`
-        INSERT INTO assessments (id, title, description, assessment_type, duration_minutes, total_marks)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO assessments (id, title, description, assessment_type, type, duration_minutes, duration, total_marks)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (id) DO NOTHING;
       `, [
         assessmentId,
         'Q3 Software Engineering Cohort Entrance Test',
         'Aptitude, DSA, Web Foundations, and standard coding execution challenges.',
         'Full-stack',
+        'Full-stack',
+        90,
         90,
         100
       ]);
@@ -144,6 +146,9 @@ export class AssessmentService {
       console.log('Table Name: assessment_attempts');
       console.log(`User ID: ${candidateId}`);
       console.log(`Inserted Record ID: ${attemptId}`);
+
+      // Requirement 6: Add backend API logging for assessment submit
+      console.log(`[API Logging] Assessment submit: Candidate ID ${candidateId}, Assessment ID ${assessmentId}, Score: ${score}, Percentage: ${score}`);
 
       // 4. Clear any stale answer registers to enable updates safely
       await dbQuery('DELETE FROM candidate_answers WHERE attempt_id = $1;', [attemptId]);
@@ -184,29 +189,39 @@ export class AssessmentService {
 
         // Save into candidate_answers
         await dbQuery(`
-          INSERT INTO candidate_answers (attempt_id, question_id, answer_text, obtained_marks, evaluated_by_ai)
-          VALUES ($1, $2, $3, $4, $5);
+          INSERT INTO candidate_answers (attempt_id, candidate_id, question_id, answer, answer_text, obtained_marks, evaluated_by_ai, submitted_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP);
         `, [
           attemptId,
+          candidateId,
           questionId,
+          textOfAnswer,
           textOfAnswer,
           (qType.includes('mcq') && resp.selectedOption) ? 10 : 0, // baseline estimation
           qType === 'coding' || qType === 'mindset' || qType === 'descriptive'
         ]);
 
+        // Requirement 6: Add backend API logging for answer save
+        console.log(`[API Logging] Answer save: Candidate ID ${candidateId}, Question ID ${questionId}, Answer: ${textOfAnswer.substring(0, 100)}`);
+
         // Save into coding_submissions if type is coding
         if (qType === 'coding' || resp.codeAnswer) {
           await dbQuery(`
-            INSERT INTO coding_submissions (attempt_id, question_id, source_code, language, execution_result, score)
-            VALUES ($1, $2, $3, $4, $5, $6);
+            INSERT INTO coding_submissions (attempt_id, candidate_id, question_id, code, source_code, language, execution_result, score, submitted_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP);
           `, [
             attemptId,
+            candidateId,
             questionId,
+            resp.codeAnswer || '',
             resp.codeAnswer || '',
             resp.languageSelected || 'javascript',
             'Compilation: COMPILE_SUCCESS. 4 of 4 assertions validated.',
             score > 80 ? 15 : 10
           ]);
+
+          // Requirement 6: Add backend API logging for coding submission save
+          console.log(`[API Logging] Coding submission save: Candidate ID ${candidateId}, Question ID ${questionId}, Code length: ${resp.codeAnswer?.length || 0}`);
         }
       }
 
@@ -240,6 +255,20 @@ export class AssessmentService {
       console.log('Table Name: evaluation_results');
       console.log(`User ID: ${candidateId}`);
       console.log(`Inserted Record ID: ${evalId}`);
+
+      // 7. Save to results table
+      await dbQuery(`
+        INSERT INTO results (candidate_id, assessment_id, score, percentage, submitted_at)
+        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP);
+      `, [
+        candidateId,
+        assessmentId,
+        parseFloat(score.toString()),
+        parseFloat(score.toString())
+      ]);
+
+      // Requirement 6: Add backend API logging for result generation
+      console.log(`[API Logging] Result generation: Candidate ID ${candidateId}, Assessment ID ${assessmentId}, Score: ${score}, Percentage: ${score}`);
 
       console.log(`[Assessment Service] Submission stored beautifully for attempt: ${attemptId}`);
 
