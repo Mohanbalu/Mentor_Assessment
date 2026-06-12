@@ -254,20 +254,15 @@ export default function App() {
       localStorage.setItem('sa_platform_submissions_v2', JSON.stringify(INITIAL_CANDIDATES));
       localStorage.setItem('sa_platform_questions_v2', JSON.stringify(INITIAL_QUESTIONS));
 
-      // Clear candidate assessment cache
-      localStorage.removeItem('candidate_current_screen');
-      localStorage.removeItem('candidate_info');
-      localStorage.removeItem('candidate_self_assessment');
-      localStorage.removeItem('candidate_responses');
-      localStorage.removeItem('candidate_predicted_score');
-      localStorage.removeItem('candidate_agreed_instructions');
-      localStorage.removeItem('candidate_tab_switch_count');
-      localStorage.removeItem('candidate_copy_count');
-      localStorage.removeItem('candidate_paste_count');
-      localStorage.removeItem('candidate_answer_changes');
-      localStorage.removeItem('candidate_time_per_section');
-      localStorage.removeItem('candidate_session_id');
-      localStorage.removeItem('candidate_db_id');
+      // Clear all potential candidate storage keys (scoped and legacy)
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('candidate_') || key.startsWith('cand_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
       window.location.reload();
     }
   };
@@ -404,6 +399,7 @@ export default function App() {
         {/* Strictly filter rendering: candidate mode for candidates; full choices for admin@indiwebpros.in */}
         {(!adminUser || adminUser.email.toLowerCase() !== 'admin@indiwebpros.in' || activePortal === 'candidate') && (
           <CandidateFlow 
+            key={adminUser?.email || 'guest'}
             onSubmissionComplete={handleCandidateSubmission}
             questions={questions}
             candidateEmail={adminUser?.email}

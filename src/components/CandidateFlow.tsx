@@ -12,6 +12,7 @@ interface CandidateFlowProps {
   onSubmissionComplete: (submission: CandidateAssessmentSubmission) => void;
   questions?: Question[];
   candidateEmail?: string;
+  key?: string;
 }
 
 export default function CandidateFlow({ onSubmissionComplete, questions = INITIAL_QUESTIONS, candidateEmail }: CandidateFlowProps) {
@@ -31,21 +32,29 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   // 12: Learning Mindset Round
   // 13: Review & Submit
   // 14: Submission Success Page
+  // Simple helper to get the partitioned localStorage key names for the active logged-in candidate
+  const getScopedKey = (baseKey: string) => {
+    if (!candidateEmail) return `candidate_${baseKey}`;
+    const cleanEmail = candidateEmail.trim().toLowerCase();
+    return `cand_${cleanEmail}_${baseKey}`;
+  };
+
   const [currentScreen, setCurrentScreen] = useState<number>(() => {
-    const cached = localStorage.getItem('candidate_current_screen');
+    const cached = localStorage.getItem(getScopedKey('current_screen'));
     return cached ? parseInt(cached, 10) : 0;
   });
 
   const [sessionId, setSessionId] = useState<string>(() => {
-    const cached = localStorage.getItem('candidate_session_id');
+    const key = getScopedKey('session_id');
+    const cached = localStorage.getItem(key);
     if (cached) return cached;
     const newSess = 'sess-' + Math.random().toString(36).substring(2, 12);
-    localStorage.setItem('candidate_session_id', newSess);
+    localStorage.setItem(key, newSess);
     return newSess;
   });
 
   const [candidateDbId, setCandidateDbId] = useState<number | null>(() => {
-    const cached = localStorage.getItem('candidate_db_id');
+    const cached = localStorage.getItem(getScopedKey('db_id'));
     return cached ? parseInt(cached, 10) : null;
   });
 
@@ -172,10 +181,10 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
 
   // Candidate state structures
   const [predictedScore, setPredictedScore] = useState<string>(() => {
-    return localStorage.getItem('candidate_predicted_score') || '60-80';
+    return localStorage.getItem(getScopedKey('predicted_score')) || '60-80';
   });
   const [agreedToInstructions, setAgreedToInstructions] = useState<boolean>(() => {
-    return localStorage.getItem('candidate_agreed_instructions') === 'true';
+    return localStorage.getItem(getScopedKey('agreed_instructions')) === 'true';
   });
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
@@ -183,7 +192,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   const [uploadError, setUploadError] = useState<string | null>(null);
   
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>(() => {
-    const cached = localStorage.getItem('candidate_info');
+    const cached = localStorage.getItem(getScopedKey('info'));
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -224,7 +233,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   });
 
   const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(() => {
-    const cached = localStorage.getItem('candidate_self_assessment');
+    const cached = localStorage.getItem(getScopedKey('self_assessment'));
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -250,7 +259,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   });
 
   const [responses, setResponses] = useState<CandidateResponse[]>(() => {
-    const cached = localStorage.getItem('candidate_responses');
+    const cached = localStorage.getItem(getScopedKey('responses'));
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -262,23 +271,23 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
 
   // Telemetry trackers
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(() => {
-    const cached = localStorage.getItem('candidate_tab_switch_count');
+    const cached = localStorage.getItem(getScopedKey('tab_switch_count'));
     return cached ? parseInt(cached, 10) : 0;
   });
   const [copyCount, setCopyCount] = useState<number>(() => {
-    const cached = localStorage.getItem('candidate_copy_count');
+    const cached = localStorage.getItem(getScopedKey('copy_count'));
     return cached ? parseInt(cached, 10) : 0;
   });
   const [pasteCount, setPasteCount] = useState<number>(() => {
-    const cached = localStorage.getItem('candidate_paste_count');
+    const cached = localStorage.getItem(getScopedKey('paste_count'));
     return cached ? parseInt(cached, 10) : 0;
   });
   const [answerChanges, setAnswerChanges] = useState<number>(() => {
-    const cached = localStorage.getItem('candidate_answer_changes');
+    const cached = localStorage.getItem(getScopedKey('answer_changes'));
     return cached ? parseInt(cached, 10) : 0;
   });
   const [timePerSection, setTimePerSection] = useState<Record<string, number>>(() => {
-    const cached = localStorage.getItem('candidate_time_per_section');
+    const cached = localStorage.getItem(getScopedKey('time_per_section'));
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -327,7 +336,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
               resumeUrl: dbRecord.resume_url || prev.resumeUrl || '',
               resumeFilename: dbRecord.resume_filename || prev.resumeFilename || ''
             };
-            localStorage.setItem('candidate_info', JSON.stringify(updated));
+            localStorage.setItem(getScopedKey('info'), JSON.stringify(updated));
             return updated;
           });
         }
@@ -342,7 +351,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     if (candidateEmail) {
       setCandidateInfo(prev => {
         const updated = { ...prev, email: candidateEmail };
-        localStorage.setItem('candidate_info', JSON.stringify(updated));
+        localStorage.setItem(getScopedKey('info'), JSON.stringify(updated));
         return updated;
       });
       fetchProfileAndAutofill(candidateEmail);
@@ -353,47 +362,47 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
 
   // Persists draft progress periodically of changes
   useEffect(() => {
-    localStorage.setItem('candidate_current_screen', currentScreen.toString());
+    localStorage.setItem(getScopedKey('current_screen'), currentScreen.toString());
   }, [currentScreen]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_predicted_score', predictedScore);
+    localStorage.setItem(getScopedKey('predicted_score'), predictedScore);
   }, [predictedScore]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_agreed_instructions', agreedToInstructions ? 'true' : 'false');
+    localStorage.setItem(getScopedKey('agreed_instructions'), agreedToInstructions ? 'true' : 'false');
   }, [agreedToInstructions]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_info', JSON.stringify(candidateInfo));
+    localStorage.setItem(getScopedKey('info'), JSON.stringify(candidateInfo));
   }, [candidateInfo]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_self_assessment', JSON.stringify(selfAssessment));
+    localStorage.setItem(getScopedKey('self_assessment'), JSON.stringify(selfAssessment));
   }, [selfAssessment]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_responses', JSON.stringify(responses));
+    localStorage.setItem(getScopedKey('responses'), JSON.stringify(responses));
   }, [responses]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_tab_switch_count', tabSwitchCount.toString());
+    localStorage.setItem(getScopedKey('tab_switch_count'), tabSwitchCount.toString());
   }, [tabSwitchCount]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_copy_count', copyCount.toString());
+    localStorage.setItem(getScopedKey('copy_count'), copyCount.toString());
   }, [copyCount]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_paste_count', pasteCount.toString());
+    localStorage.setItem(getScopedKey('paste_count'), pasteCount.toString());
   }, [pasteCount]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_answer_changes', answerChanges.toString());
+    localStorage.setItem(getScopedKey('answer_changes'), answerChanges.toString());
   }, [answerChanges]);
 
   useEffect(() => {
-    localStorage.setItem('candidate_time_per_section', JSON.stringify(timePerSection));
+    localStorage.setItem(getScopedKey('time_per_section'), JSON.stringify(timePerSection));
   }, [timePerSection]);
 
   // Track live active section seconds
@@ -1030,7 +1039,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       if (data.data?.id) {
         const savedId = data.data.id;
         setCandidateDbId(savedId);
-        localStorage.setItem('candidate_db_id', savedId.toString());
+        localStorage.setItem(getScopedKey('db_id'), savedId.toString());
 
         // Dynamic back-link link the scores properly
         try {
