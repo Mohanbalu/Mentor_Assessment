@@ -114,6 +114,24 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     }
   };
 
+  const submitRef = useRef<() => void>(() => {});
+  const [isFullscreenExited, setIsFullscreenExited] = useState<boolean>(false);
+
+  const requestFullScreenMode = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen()
+        .then(() => {
+          setIsFullscreenExited(false);
+        })
+        .catch(err => {
+          console.warn("[Fullscreen] Failed to enter fullscreen mode:", err);
+        });
+    } else {
+      setIsFullscreenExited(false);
+    }
+  };
+
   const advanceWithSave = async () => {
     if (currentScreen === 4) {
       // Save Self-Assessment screen responses
@@ -135,8 +153,15 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       } catch (err) {
         console.error('Failed to save self-assessment ratings:', err);
       }
+      
+      // Automatically request full screen upon entering secure assessment (Screen 5)
+      requestFullScreenMode();
     } else if (currentScreen >= 5 && currentScreen <= 12) {
       await handleSaveSectionResponses(currentScreen);
+      // Encourage keeping fullscreen active
+      if (!document.fullscreenElement) {
+        requestFullScreenMode();
+      }
     }
     setCurrentScreen(prev => prev + 1);
   };
@@ -232,38 +257,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     return () => clearInterval(interval);
   }, [currentScreen]);
 
-  // Hook into browser window events to gather standard anti-cheating metrics
-  useEffect(() => {
-    // Only track if inside active assessment (Screens 5-12)
-    const isTestingActive = currentScreen >= 5 && currentScreen <= 12;
-    if (!isTestingActive) return;
-
-    const handleVisibility = () => {
-      if (document.hidden) {
-        setTabSwitchCount(prev => prev + 1);
-        // Show lightweight warning in console or UI banner
-        console.warn('Security Alert: Focus moved away from assessment screen.');
-      }
-    };
-
-    const handleCopy = () => {
-      setCopyCount(prev => prev + 1);
-    };
-
-    const handlePaste = () => {
-      setPasteCount(prev => prev + 1);
-    };
-
-    window.addEventListener('visibilitychange', handleVisibility);
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('paste', handlePaste);
-
-    return () => {
-      window.removeEventListener('visibilitychange', handleVisibility);
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('paste', handlePaste);
-    };
-  }, [currentScreen]);
+  // Window metrics / anti-cheating effect hook moved downstream below submitFinalAssessment declaration
 
   // MCQ Selection Helper
   const handleMCQSelect = (questionId: string, option: string) => {
@@ -547,6 +541,129 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     setCurrentScreen(14); // Success Page!
   };
 
+  // Set up a stable reference to submitFinalAssessment for visibility listeners
+  useEffect(() => {
+    submitRef.current = submitFinalAssessment;
+  }, [submitFinalAssessment]);
+
+  // Hook into browser window events to gather standard anti-cheating metrics
+  useEffect(() => {
+    // Only track if inside active assessment (Screens 5-12)
+    const isTestingActive = currentScreen >= 5 && currentScreen <= 12;
+    if (!isTestingActive) return;
+
+    const safeAlert = (msg: string) => {
+      try {
+        alert(msg);
+      } catch (err) {
+        console.warn("[Secure Assessment Mode] Alert blocked:", msg);
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setTabSwitchCount(prev => {
+          const nextVal = prev + 1;
+          safeAlert(`[SECURITY PENALTY] Focus lost! Tab switches/exits: ${nextVal}/3. The examination will automatically submit if you switch tabs/lose focus more than 3 times.`);
+          if (nextVal > 3) {
+            submitRef.current();
+          }
+          return nextVal;
+        });
+      }
+    };
+
+    const handleBlur = () => {
+      setTabSwitchCount(prev => {
+        const nextVal = prev + 1;
+        safeAlert(`[SECURITY PENALTY] Window lost focus! Avoid clicking outside or opening inspectors: ${nextVal}/3. The examination will automatically submit if you lose focus more than 3 times.`);
+        if (nextVal > 3) {
+          submitRef.current();
+        }
+        return nextVal;
+      });
+    };
+
+    const handleFullScreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFullscreenExited(true);
+        setTabSwitchCount(prev => {
+          const nextVal = prev + 1;
+          safeAlert(`[SECURITY PENALTY] Fullscreen exited! You must remain in Fullscreen mode: ${nextVal}/3. The examination will automatically submit if deviations exceed 3.`);
+          if (nextVal > 3) {
+            submitRef.current();
+          }
+          return nextVal;
+        });
+      } else {
+        setIsFullscreenExited(false);
+      }
+    };
+
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      setCopyCount(prev => prev + 1);
+      safeAlert("Security Alert: Copying (Ctrl+C / Cmd+C) is strictly prohibited during this secure assessment.");
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      setPasteCount(prev => prev + 1);
+      safeAlert("Security Alert: Pasting (Ctrl+V / Cmd+V) is strictly prohibited during this secure assessment.");
+    };
+
+    const handleCut = (e: ClipboardEvent) => {
+      e.preventDefault();
+      safeAlert("Security Alert: Cutting text is strictly prohibited during this secure assessment.");
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      safeAlert("Security Alert: Context menu / right-clicking is disabled during this secure assessment.");
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isCopy = (e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C');
+      const isPaste = (e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V');
+      const isCut = (e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X');
+
+      if (isCopy) {
+        e.preventDefault();
+        setCopyCount(prev => prev + 1);
+        safeAlert("Security Alert: Copying is strictly prohibited during this secure assessment.");
+      }
+      if (isPaste) {
+        e.preventDefault();
+        setPasteCount(prev => prev + 1);
+        safeAlert("Security Alert: Pasting is strictly prohibited during this secure assessment.");
+      }
+      if (isCut) {
+        e.preventDefault();
+        safeAlert("Security Alert: Cutting is strictly prohibited during this secure assessment.");
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('paste', handlePaste);
+    document.addEventListener('cut', handleCut);
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+      document.removeEventListener('cut', handleCut);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentScreen]);
+
   // Helper validation and S3 resume uploader
   const handleResumeUpload = async (file: File) => {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -801,6 +918,34 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   // Render Screens
   return (
     <div id="assessment-application-stage" className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans transition-all">
+      
+      {/* Fullscreen Guard Overlay */}
+      {isFullscreenExited && currentScreen >= 5 && currentScreen <= 12 && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md p-6 text-center">
+          <div className="max-w-md bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col gap-6 shadow-2xl items-center">
+            <div className="w-16 h-16 bg-red-950 border border-red-800 rounded-full flex items-center justify-center animate-pulse">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white tracking-tight">Fullscreen Required</h2>
+              <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+                To guarantee secure validation procedures, you must remain in fullscreen mode.
+                Exiting fullscreen or switching to other windows is logged as a security telemetry warning.
+              </p>
+              <p className="text-xs text-red-400 font-mono mt-2 font-bold animate-pulse">
+                Tab Actions / Violations Tracked: {tabSwitchCount}/3
+              </p>
+            </div>
+            <button
+              onClick={requestFullScreenMode}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all border border-indigo-500/30 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ShieldCheck className="w-5 h-5 text-indigo-200" />
+              Restore Fullscreen Mode
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Top Banner indicating Active Assessment mode & Telemetry Warnings */}
       {currentScreen >= 5 && currentScreen <= 12 && (
@@ -1811,18 +1956,38 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
         {/* SCREEN 14: Submission Success Page */}
         {currentScreen === 14 && (
           <div id="screen-14-completionsuccess" className="max-w-md mx-auto my-auto text-center bg-slate-950 border border-slate-800 p-8 rounded-2xl flex flex-col gap-6 shadow-2xl">
-            <div className="mx-auto w-14 h-14 bg-emerald-950 rounded-full flex items-center justify-center border border-emerald-800">
-              <CheckCircle className="w-8 h-8 text-emerald-400" />
-            </div>
+            {tabSwitchCount > 3 ? (
+              <div className="mx-auto w-14 h-14 bg-red-950 rounded-full flex items-center justify-center border border-red-800">
+                <AlertTriangle className="w-8 h-8 text-red-500 animate-bounce" />
+              </div>
+            ) : (
+              <div className="mx-auto w-14 h-14 bg-emerald-950 rounded-full flex items-center justify-center border border-emerald-800">
+                <CheckCircle className="w-8 h-8 text-emerald-400" />
+              </div>
+            )}
 
             <div>
-              <span className="text-[10px] font-mono bg-emerald-950/60 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800">
-                Assessment Submitted Successfully
-              </span>
-              <h2 className="text-2xl font-extrabold tracking-tight text-white mt-3">Thank You, Developer!</h2>
-              <p className="text-slate-400 text-sm mt-2 leading-relaxed">
-                Your profiles, answers script, and dynamic telemetry tracking results have been recorded inside the evaluation sequence database.
-              </p>
+              {tabSwitchCount > 3 ? (
+                <>
+                  <span className="text-[10px] font-mono bg-red-950 text-red-400 px-2.5 py-1 rounded border border-red-900 uppercase font-bold tracking-wider">
+                    Assessment Forcibly Terminated
+                  </span>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-white mt-3">EXAM LIMIT EXCEEDED</h2>
+                  <p className="text-red-400 text-sm mt-2 leading-relaxed">
+                    This assessment was automatically submitted because you exceeded the limit of 3 tab switches / window focus losses.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] font-mono bg-emerald-950/60 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800">
+                    Assessment Submitted Successfully
+                  </span>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-white mt-3">Thank You, Developer!</h2>
+                  <p className="text-slate-400 text-sm mt-2 leading-relaxed">
+                    Your profiles, answers script, and dynamic telemetry tracking results have been recorded inside the evaluation sequence database.
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Summary statistics logs box */}
@@ -1831,8 +1996,10 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                 TELEMETRY DIAGNOSTICS COMMITTED:
               </div>
               <div className="flex justify-between">
-                <span>Plagiarism Alert Events:</span>
-                <span className="text-rose-400">{tabSwitchCount} toggles</span>
+                <span>Security Warnings/Exits:</span>
+                <span className={tabSwitchCount > 3 ? "text-red-400 font-bold" : "text-amber-400"}>
+                  {tabSwitchCount} of 3 ({tabSwitchCount > 3 ? "Exceeded" : "Safe"})
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Copy / Paste Counters:</span>
