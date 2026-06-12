@@ -46,11 +46,17 @@ export function authorizeJwt(req: SecurityRequest, res: Response, next: NextFunc
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     
+    // Normalize 'admin' role to 'SUPER_ADMIN' for internal consistency
+    let role = decoded.role || 'SUPER_ADMIN';
+    if (role === 'admin') {
+      role = 'SUPER_ADMIN';
+    }
+    
     // Structure payload properly
     req.user = {
       userId: decoded.userId || String(decoded.id),
       email: decoded.email,
-      role: decoded.role || 'SUPER_ADMIN',
+      role: role,
       organizationId: decoded.organizationId
     };
 
