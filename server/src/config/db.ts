@@ -382,13 +382,20 @@ export class ProductionDatabaseEngine {
       );`
     ];
 
-    try {
-      for (const sql of schemas) {
-        await this.query(sql);
+    console.log('[Db Engine Schema Init] Verification checks starting.');
+    
+    // Execute each schema creation in its own try/catch to ensure other tables are still verified/created
+    for (let i = 0; i < schemas.length; i++) {
+      try {
+        await this.query(schemas[i]);
+      } catch (err: any) {
+        console.error(`[Db Engine Schema Init] Schema creation failed for query index ${i}:`, err.message || err);
       }
-      console.log('[Db Engine Schema Init] Tables verified or created successfully.');
+    }
+    console.log('[Db Engine Schema Init] All table templates processed.');
 
-      // Seed admins table with initial super_admin config
+    // Seed admins table with initial super_admin config
+    try {
       const checkAdmin = await this.query(`SELECT id FROM admins WHERE LOWER(email) = 'admin@indiwebpros.in' LIMIT 1;`);
       if (checkAdmin.rowCount === 0) {
         console.log('[Db Engine Schema Init] Seeding initial admin: admin@indiwebpros.in');
@@ -398,8 +405,12 @@ export class ProductionDatabaseEngine {
           VALUES ('admin@indiwebpros.in', $1, 'super_admin');
         `, [hash]);
       }
+    } catch (err: any) {
+      console.error('[Db Engine Schema Init] Seeding admins table failed:', err.message || err);
+    }
 
-      // Seed users table with admin credentials if not existing
+    // Seed users table with admin credentials if not existing
+    try {
       const checkUserAdmin = await this.query(`SELECT id FROM users WHERE LOWER(email) = 'admin@indiwebpros.in' LIMIT 1;`);
       if (checkUserAdmin.rowCount === 0) {
         console.log('[Db Engine Schema Init] Seeding admin user record in users table');
@@ -409,8 +420,12 @@ export class ProductionDatabaseEngine {
           VALUES ('Platform', 'Admin', 'Platform Admin', 'admin@indiwebpros.in', $1, 'admin', TRUE);
         `, [hash]);
       }
+    } catch (err: any) {
+      console.error('[Db Engine Schema Init] Seeding admin user record failed:', err.message || err);
+    }
 
-      // Seed core assessment if it does not exist
+    // Seed core assessment and questions if they do not exist
+    try {
       const checkAsm = await this.query(`SELECT id FROM assessments WHERE id = 'asm-1';`);
       if (checkAsm.rowCount === 0) {
         console.log('[Db Engine Schema Init] Seeding default SE entrance test blueprint.');

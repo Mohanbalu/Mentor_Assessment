@@ -43,6 +43,57 @@ async function startServer() {
     });
   });
 
+  // DB debug endpoint
+  app.get('/api/db-debug', async (req: Request, res: Response) => {
+    try {
+      const isConnected = (dbEngine as any).isConnected;
+      const useMemoryFallback = (dbEngine as any).useMemoryFallback;
+      let usersCount = 0;
+      let sampleUsers: any[] = [];
+      let lastOtps: any[] = [];
+      let tables: any[] = [];
+
+      if (!useMemoryFallback) {
+        const tablesQuery = await dbEngine.query(
+          "SELECT table_name FROM information_schema.tables WHERE table_schema='public';"
+        );
+        tables = tablesQuery.rows;
+
+        const usersQuery = await dbEngine.query("SELECT id, email, role, email_verified, first_name FROM users;");
+        usersCount = usersQuery.rowCount;
+        sampleUsers = usersQuery.rows;
+
+        const otpsQuery = await dbEngine.query("SELECT * FROM email_otps ORDER BY id DESC LIMIT 5;");
+        lastOtps = otpsQuery.rows;
+      } else {
+        const memDatabase = (dbEngine as any).getMemoryDatabase ? (dbEngine as any).getMemoryDatabase() : null;
+        if (memDatabase || (global as any).memDatabase) {
+          const mDb = memDatabase || (global as any).memDatabase;
+          usersCount = mDb.users?.length || 0;
+          sampleUsers = mDb.users || [];
+          lastOtps = mDb.email_otps || [];
+        } else {
+          // Just read memDatabase from local export
+          usersCount = -1;
+        }
+      }
+
+      res.status(200).json({
+        isConnected,
+        useMemoryFallback,
+        usersCount,
+        sampleUsers,
+        lastOtps,
+        tables
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: err.message || err,
+        stack: err.stack
+      });
+    }
+  });
+
   // Global standard error catcher middleware
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error('[Global Error Catch]:', err);

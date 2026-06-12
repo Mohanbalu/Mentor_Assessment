@@ -308,14 +308,32 @@ export class OtpAuthController {
 
     try {
       // Find admin email record
-      const checkAdmin = await dbEngine.query(
+      let checkAdmin = await dbEngine.query(
         `SELECT * FROM users WHERE LOWER(email) = 'admin@indiwebpros.in' LIMIT 1;`,
       );
 
       if (checkAdmin.rowCount === 0) {
+        console.log('[Admin Login] Admin not found in users table. Seeding dynamically...');
+        const hash = bcrypt.hashSync('AdminPass123!', 10);
+        try {
+          await dbEngine.query(`
+            INSERT INTO users (first_name, last_name, full_name, email, password_hash, role, email_verified)
+            VALUES ('Platform', 'Admin', 'Platform Admin', 'admin@indiwebpros.in', $1, 'admin', TRUE);
+          `, [hash]);
+          
+          // Re-query to fetch the seeded record
+          checkAdmin = await dbEngine.query(
+            `SELECT * FROM users WHERE LOWER(email) = 'admin@indiwebpros.in' LIMIT 1;`,
+          );
+        } catch (dbErr: any) {
+          console.error('[Admin Login] Failed to dynamically seed admin user:', dbErr);
+        }
+      }
+
+      if (checkAdmin.rowCount === 0) {
         res.status(404).json({
           success: false,
-          message: 'Administrator account record not seeded.'
+          message: 'Administrator account record not seeded and failed to auto-seed.'
         });
         return;
       }
