@@ -1,13 +1,24 @@
 // server/src/config/aws.ts - Production AWS S3 File Management Integration Service
+import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
 export class ProductionS3Controller {
   private static instance: ProductionS3Controller;
   private region: string;
   private bucketName: string;
+  private client: S3Client;
 
   private constructor() {
     this.region = process.env.AWS_REGION || 'us-east-1';
     this.bucketName = process.env.S3_BUCKET || 'assessment-platform-storage';
+    
+    const config: any = { region: this.region };
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      config.credentials = {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      };
+    }
+    this.client = new S3Client(config);
   }
 
   public static getInstance(): ProductionS3Controller {
@@ -44,8 +55,45 @@ export class ProductionS3Controller {
    * Directly upload smaller artifacts (like reports, certificates) directly from our backend environment.
    */
   public async uploadFileDirectly(fileKey: string, fileBuffer: Buffer, contentType: string): Promise<string> {
-    console.log(`[AWS S3] Bulk uploading direct buffer asset with Key: ${fileKey}, Size: ${fileBuffer.length} bytes`);
-    return `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${fileKey}`;
+    console.log(`[AWS S3] Bulk uploading direct buffer asset...`);
+    console.log(`- Bucket name: ${this.bucketName}`);
+    console.log(`- Object key: ${fileKey}`);
+    console.log(`- Content type: ${contentType}`);
+    console.log(`- File size: ${fileBuffer.length} bytes`);
+
+    try {
+      // 1. Upload using PutObjectCommand
+      const putCommand = new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: fileKey,
+        Body: fileBuffer,
+        ContentType: contentType
+      });
+
+      const uploadResult = await this.client.send(putCommand);
+      console.log(`[AWS S3 SUCCESS] PutObjectCommand file transfer complete.`);
+      console.log(`- Upload result data:`, JSON.stringify(uploadResult));
+
+      // 5. Verify object exists using HeadObjectCommand
+      console.log(`[AWS S3] Verifying uploaded object existence via HeadObjectCommand on key: ${fileKey}`);
+      const headCommand = new HeadObjectCommand({
+        Bucket: this.bucketName,
+        Key: fileKey
+      });
+
+      const headResult = await this.client.send(headCommand);
+      console.log(`[AWS S3 SUCCESS] Verified object exists. Object Details:`, JSON.stringify(headResult));
+
+      // Generate final S3 URL
+      const finalUrl = `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${fileKey}`;
+      console.log(`[AWS S3 SUCCESS] Final S3 URL constructed: ${finalUrl}`);
+      return finalUrl;
+    } catch (uploadError: any) {
+      console.error(`[AWS S3 ERROR] Upload or verification failed for key: ${fileKey}`);
+      console.error(`- Upload errors message: ${uploadError?.message || uploadError}`);
+      console.error(`- Details:`, uploadError);
+      throw uploadError;
+    }
   }
 }
 

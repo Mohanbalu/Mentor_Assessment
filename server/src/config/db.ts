@@ -631,8 +631,8 @@ export class ProductionDatabaseEngine {
           target_role: params[7],
           github_url: params[8],
           linkedin_url: params[9],
-          resume_url: params[10],
-          resume_filename: params[11],
+          resume_filename: params[10],
+          resume_url: params[11],
           created_at: new Date()
         };
         memDatabase.candidate_profiles.push(newRecord);
