@@ -25,8 +25,13 @@ export class CandidateController {
       cgpa,
       target_role,
       github_url,
-      linkedin_url
+      linkedin_url,
+      resume_filename,
+      resume_url
     } = req.body;
+
+    console.log("resume_filename:", resume_filename);
+    console.log("resume_url:", resume_url);
 
     // Validate parameters
     const errors: string[] = [];
@@ -59,7 +64,9 @@ export class CandidateController {
         cgpa,
         target_role,
         github_url,
-        linkedin_url
+        linkedin_url,
+        resume_filename,
+        resume_url
       });
 
       console.log(`[API Logging - ${correlationId}] Database insert success - Candidate Saved ID:`, savedRecord.id);

@@ -641,21 +641,44 @@ export class ProductionDatabaseEngine {
 
       // UPDATE candidate_profiles
       if (sqlLower.includes('update candidate_profiles')) {
-        const id = params[9]; // ID is DB_USER mapped in params
-        const index = memDatabase.candidate_profiles.findIndex(p => p.id === id);
+        let id = params[9]; // legacy or fallback mapping
+        let fn = params[0], ph = params[1], col = params[2], br = params[3], yr = params[4], cg = params[5], tr = params[6], gh = params[7], li = params[8];
+        let rf = null, ru = null;
+
+        if (params.length >= 12) {
+          // our new saving query
+          id = params[0];
+          fn = params[1];
+          ph = params[2];
+          col = params[3];
+          br = params[4];
+          yr = params[5];
+          cg = params[6];
+          tr = params[7];
+          gh = params[8];
+          li = params[9];
+          rf = params[10];
+          ru = params[11];
+        }
+
+        const targetId = typeof id === 'number' ? id : parseInt(String(id || ''));
+        const index = memDatabase.candidate_profiles.findIndex(p => p.id === targetId);
         if (index !== -1) {
           memDatabase.candidate_profiles[index] = {
             ...memDatabase.candidate_profiles[index],
-            full_name: params[0] || memDatabase.candidate_profiles[index].full_name,
-            phone: params[1] || memDatabase.candidate_profiles[index].phone,
-            college: params[2] || memDatabase.candidate_profiles[index].college,
-            branch: params[3] || memDatabase.candidate_profiles[index].branch,
-            academic_year: params[4] || memDatabase.candidate_profiles[index].academic_year,
-            cgpa: params[5] ? parseFloat(params[5].toString()) : memDatabase.candidate_profiles[index].cgpa,
-            target_role: params[6] || memDatabase.candidate_profiles[index].target_role,
-            github_url: params[7] || memDatabase.candidate_profiles[index].github_url,
-            linkedin_url: params[8] || memDatabase.candidate_profiles[index].linkedin_url
+            full_name: fn || memDatabase.candidate_profiles[index].full_name,
+            phone: ph || memDatabase.candidate_profiles[index].phone,
+            college: col || memDatabase.candidate_profiles[index].college,
+            branch: br || memDatabase.candidate_profiles[index].branch,
+            academic_year: yr || memDatabase.candidate_profiles[index].academic_year,
+            cgpa: cg !== null && cg !== undefined ? parseFloat(cg.toString()) : memDatabase.candidate_profiles[index].cgpa,
+            target_role: tr || memDatabase.candidate_profiles[index].target_role,
+            github_url: gh || memDatabase.candidate_profiles[index].github_url,
+            linkedin_url: li || memDatabase.candidate_profiles[index].linkedin_url,
+            resume_filename: rf !== null ? rf : memDatabase.candidate_profiles[index].resume_filename,
+            resume_url: ru !== null ? ru : memDatabase.candidate_profiles[index].resume_url
           };
+          return { rows: [memDatabase.candidate_profiles[index]] as T[], rowCount: 1 };
         }
         return { rows: [], rowCount: 1 };
       }

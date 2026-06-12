@@ -32,50 +32,163 @@ export class CandidateService {
    * Persists a validated candidate profile to the RDS database using parameterized query
    */
   public async saveProfile(payload: CandidateProfilePayload) {
-    const queryStr = `
-      INSERT INTO candidate_profiles (
-        full_name,
-        email,
-        phone,
-        college,
-        branch,
-        academic_year,
-        cgpa,
-        target_role,
-        github_url,
-        linkedin_url,
-        resume_url,
-        resume_filename
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *;
-    `;
+    const {
+      full_name,
+      email,
+      phone,
+      college,
+      branch,
+      academic_year,
+      cgpa,
+      target_role,
+      github_url,
+      linkedin_url,
+      resume_filename,
+      resume_url
+    } = payload;
 
-    // Parse cgpa dynamically (can be string or numeric)
-    const cgpaVal = payload.cgpa !== undefined && payload.cgpa !== '' ? parseFloat(payload.cgpa.toString()) : null;
+    // Logging as requested
+    console.log("resume_filename:", resume_filename);
+    console.log("resume_url:", resume_url);
 
-    const params = [
-      payload.full_name || null,
-      payload.email || null,
-      payload.phone || null,
-      payload.college || null,
-      payload.branch || null,
-      payload.academic_year || null,
-      cgpaVal,
-      payload.target_role || null,
-      payload.github_url || null,
-      payload.linkedin_url || null,
-      payload.resume_url || null,
-      payload.resume_filename || null
-    ];
+    // Logging expected query structures verbatim as requested
+    console.log("EXPECTED INSERT QUERY:");
+    console.log(`
+INSERT INTO candidate_profiles (
+ full_name,
+ email,
+ phone,
+ college,
+ branch,
+ academic_year,
+ cgpa,
+ target_role,
+ github_url,
+ linkedin_url,
+ resume_filename,
+ resume_url
+)
+VALUES (
+ $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+);
+    `.trim());
 
-    console.log('[Candidate Service] Injecting profile dataset to postgreSQL:', params);
-    
+    console.log("EXPECTED UPDATE QUERY:");
+    console.log(`
+UPDATE candidate_profiles
+SET
+ resume_filename = $11,
+ resume_url = $12
+WHERE id = $1;
+    `.trim());
+
+    const emailKey = (email || '').trim().toLowerCase();
+
+    // Check if candidate profile already exists with this email address
+    let existingCandidateId: number | null = null;
+    if (emailKey) {
+      try {
+        const checkResult = await dbEngine.query(
+          'SELECT id FROM candidate_profiles WHERE LOWER(email) = LOWER($1) LIMIT 1;',
+          [emailKey]
+        );
+        if (checkResult.rowCount && checkResult.rowCount > 0) {
+          existingCandidateId = (checkResult.rows[0] as any).id;
+        }
+      } catch (checkErr) {
+        console.warn('[Candidate Service] Email profile lookup error:', checkErr);
+      }
+    }
+
+    const cgpaVal = cgpa !== undefined && cgpa !== '' ? parseFloat(cgpa.toString()) : null;
+
+    let queryStr = '';
+    let params: any[] = [];
+
+    if (existingCandidateId !== null) {
+      console.log(`[Candidate Service] Existing profile with ID ${existingCandidateId} found. Preparing SQL UPDATE operation.`);
+      
+      queryStr = `
+        UPDATE candidate_profiles
+        SET
+          full_name = $2,
+          phone = $3,
+          college = $4,
+          branch = $5,
+          academic_year = $6,
+          cgpa = $7,
+          target_role = $8,
+          github_url = $9,
+          linkedin_url = $10,
+          resume_filename = $11,
+          resume_url = $12
+        WHERE id = $1
+        RETURNING *;
+      `;
+
+      params = [
+        existingCandidateId,
+        full_name || null,
+        phone || null,
+        college || null,
+        branch || null,
+        academic_year || null,
+        cgpaVal,
+        target_role || null,
+        github_url || null,
+        linkedin_url || null,
+        resume_filename || null,
+        resume_url || null
+      ];
+    } else {
+      console.log('[Candidate Service] No existing profile detected. Preparing SQL INSERT operation.');
+      
+      queryStr = `
+        INSERT INTO candidate_profiles (
+          full_name,
+          email,
+          phone,
+          college,
+          branch,
+          academic_year,
+          cgpa,
+          target_role,
+          github_url,
+          linkedin_url,
+          resume_filename,
+          resume_url
+        )
+        VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+        )
+        RETURNING *;
+      `;
+
+      params = [
+        full_name || null,
+        email || null,
+        phone || null,
+        college || null,
+        branch || null,
+        academic_year || null,
+        cgpaVal,
+        target_role || null,
+        github_url || null,
+        linkedin_url || null,
+        resume_filename || null,
+        resume_url || null
+      ];
+    }
+
+    console.log('[Candidate Service] Actual executed SQL statement:');
+    console.log(queryStr);
+    console.log('[Candidate Service] Bound Parameters:', params);
+
     try {
       const result = await dbEngine.query(queryStr, params);
       if (result.rowCount && result.rowCount > 0) {
         const savedCand = result.rows[0] as any;
-        console.log('[Candidate Service] Database insert success:', savedCand);
+        console.log('[Candidate Service] Database persistence successful:', savedCand);
         
         console.log('[DATA SAVED]');
         console.log('Table Name: candidate_profiles');
@@ -94,9 +207,9 @@ export class CandidateService {
 
         return savedCand;
       }
-      throw new Error('No rows returned from query execution insert.');
+      throw new Error('No rows returned from query execution.');
     } catch (error) {
-      console.error('[Candidate Service] Database insert failure:', error);
+      console.error('[Candidate Service] Database execution failure:', error);
       throw error;
     }
   }
