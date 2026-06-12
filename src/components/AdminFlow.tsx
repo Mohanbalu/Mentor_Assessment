@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getApiUrl } from '../utils/api';
 import { CandidateAssessmentSubmission, Question, CandidateResponse } from '../types';
 import { 
   BarChart3, Users, Clock, Flame, ShieldAlert, CheckCircle, 
@@ -29,14 +30,6 @@ export default function AdminFlow({
   const handleSelectCandidate = async (candidate: CandidateAssessmentSubmission) => {
     setSelectedCandidate(candidate);
     try {
-      const getApiUrl = (endpoint: string): string => {
-        const envUrl = (import.meta as any).env?.VITE_API_URL;
-        if (envUrl) {
-          return `${envUrl.replace(/\/$/, '')}${endpoint}`;
-        }
-        return endpoint;
-      };
-      
       const url = getApiUrl(`/api/admin/attempts/${candidate.id}`);
       console.log(`[Admin Detail Sync] Fetching full answers & coding blobs from PostgreSQL RDS: ${url}`);
       

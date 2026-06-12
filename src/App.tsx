@@ -3,12 +3,24 @@ import CandidateFlow from './components/CandidateFlow';
 import AdminFlow from './components/AdminFlow';
 import AuthGate from './components/AuthGate';
 import ArchitectureBlueprints from './components/ArchitectureBlueprints';
+import { getApiUrl } from './utils/api';
 import { INITIAL_QUESTIONS, INITIAL_CANDIDATES } from './data/questions';
 import { CandidateAssessmentSubmission, Question } from './types';
 import { GraduationCap, BarChart2, ShieldAlert, Cpu, Layers, BookOpen, Sun, HelpCircle, LayoutGrid, CheckCircle } from 'lucide-react';
 
 export default function App() {
-  const [activePortal, setActivePortal] = useState<'candidate' | 'admin' | 'blueprints'>('candidate');
+  const [activePortal, setActivePortal] = useState<'candidate' | 'admin' | 'blueprints'>(() => {
+    const cachedUser = localStorage.getItem('sa_admin_user');
+    try {
+      if (cachedUser) {
+        const u = JSON.parse(cachedUser);
+        if (u && u.email?.toLowerCase() === 'admin@indiwebpros.in') {
+          return 'admin';
+        }
+      }
+    } catch {}
+    return 'candidate';
+  });
   
   // JWT state managers
   const [token, setToken] = useState<string | null>(localStorage.getItem('sa_admin_jwt'));
@@ -64,14 +76,6 @@ export default function App() {
   // Synchronizes full state records from PostgreSQL RDS
   const syncPostgresSubmissions = async () => {
     try {
-      const getApiUrl = (endpoint: string): string => {
-        const envUrl = (import.meta as any).env?.VITE_API_URL;
-        if (envUrl) {
-          return `${envUrl.replace(/\/$/, '')}${endpoint}`;
-        }
-        return endpoint;
-      };
-      
       const url = getApiUrl('/api/admin/attempts');
       console.log('[System Loader] Fetching attempts from PostgreSQL database:', url);
       
@@ -235,13 +239,7 @@ export default function App() {
         </header>
         <div className="flex-1 flex items-center justify-center">
           <AuthGate
-            getApiUrl={(endpoint: string): string => {
-              const envUrl = (import.meta as any).env?.VITE_API_URL;
-              if (envUrl) {
-                return `${envUrl.replace(/\/$/, '')}${endpoint}`;
-              }
-              return endpoint;
-            }}
+            getApiUrl={getApiUrl}
             onLoginSuccess={(jwtToken, loggedUser) => {
               setToken(jwtToken);
               setAdminUser(loggedUser);
