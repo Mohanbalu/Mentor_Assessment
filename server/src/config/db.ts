@@ -13,6 +13,248 @@ export interface DatabasePoolConfig {
   idleTimeoutMillis?: number;
 }
 
+// Shared database questions definitions for PG and fallback memory synchronization
+const ALL_SEEDED_QUESTIONS = [
+  // --- APTITUDE (MCQ, 10 Minutes section) ---
+  {
+    id: 'apt-1',
+    text: 'A train 120m long passes a telegraph post in 6 seconds. Find the speed of the train in km/h.',
+    type: 'aptitude_mcq',
+    options: ['36 km/h', '54 km/h', '72 km/h', '90 km/h'],
+    ans: '72 km/h'
+  },
+  {
+    id: 'apt-2',
+    text: 'If 12 men can build a wall in 20 days, how many men will be required to build the same wall in 15 days?',
+    type: 'aptitude_mcq',
+    options: ['15 men', '16 men', '18 men', '24 men'],
+    ans: '16 men'
+  },
+  {
+    id: 'apt-3',
+    text: 'What is the next number in the series: 3, 5, 9, 17, 33, ...?',
+    type: 'aptitude_mcq',
+    options: ['45', '50', '65', '72'],
+    ans: '65'
+  },
+
+  // --- PROGRAMMING FUNDAMENTALS ---
+  {
+    id: 'prog-1',
+    text: 'Which of the following describes the OOP concept "Polymorphism"?',
+    type: 'technical_mcq',
+    options: [
+      'Hiding internal implementation details',
+      'Creating a child class from a parent class',
+      'The ability of different classes to respond to the same message in unique ways',
+      'Restricting direct access to some of an object\'s components'
+    ],
+    ans: 'The ability of different classes to respond to the same message in unique ways'
+  },
+  {
+    id: 'prog-2',
+    text: 'In Python, which of the following is an immutable data type?',
+    type: 'technical_mcq',
+    options: ['List', 'Dictionary', 'Set', 'Tuple'],
+    ans: 'Tuple'
+  },
+  {
+    id: 'prog-3',
+    text: 'Briefly explain the difference between Method Overloading and Method Overriding, citing compilation vs runtime behavior.',
+    type: 'theory',
+    options: null,
+    ans: null
+  },
+
+  // --- WEB DEVELOPMENT ---
+  {
+    id: 'web-1',
+    text: 'What is the purpose of React\'s "useEffect" cleanup function?',
+    type: 'technical_mcq',
+    options: [
+      'To prevent the component from rendering again',
+      'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs',
+      'To force React to re-fetch state from the server',
+      'To reset initial props parameters'
+    ],
+    ans: 'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs'
+  },
+  {
+    id: 'web-2',
+    text: 'Which CSS layout system is best suited for responsive, complex two-dimensional structures (rows and columns simultaneously)?',
+    type: 'technical_mcq',
+    options: ['Floats', 'Flexbox', 'CSS Grid', 'Block Positioning'],
+    ans: 'CSS Grid'
+  },
+  {
+    id: 'web-3',
+    text: 'Explain virtual DOM reconciliation in React. How does setting a unique "key" prop help performance?',
+    type: 'theory',
+    options: null,
+    ans: null
+  },
+
+  // --- DSA ---
+  {
+    id: 'dsa-1',
+    text: 'What is the worst-case time complexity of inserting an element into a balanced Binary Search Tree (such as an AVL tree) of size N?',
+    type: 'technical_mcq',
+    options: ['O(1)', 'O(log N)', 'O(N)', 'O(N log N)'],
+    ans: 'O(log N)'
+  },
+  {
+    id: 'dsa-2',
+    text: 'Which data structure follows the Last-In-First-Out (LIFO) model and is ideal for reversing call stacks?',
+    type: 'technical_mcq',
+    options: ['Queue', 'Linked List', 'Stack', 'Heap'],
+    ans: 'Stack'
+  },
+  {
+    id: 'dsa-3',
+    text: 'Explain the Space and Time complexity tradeoffs of using a Hash Map vs a Sorted Array to find pairs that sum to a target value (Two Sum).',
+    type: 'theory',
+    options: null,
+    ans: null
+  },
+
+  // --- AI & GENERATIVE AI ---
+  {
+    id: 'ai-1',
+    text: 'In Generative AI, what does the "Temperature" parameter regulate during LLM sampling?',
+    type: 'technical_mcq',
+    options: [
+      'The speed at which tokens are processed',
+      'The random variability vs predictable determination of next token selections',
+      'The maximum length of the output prompt context',
+      'The memory size required to deploy the modelWeights structure'
+    ],
+    ans: 'The random variability vs predictable determination of next token selections'
+  },
+  {
+    id: 'ai-2',
+    text: 'What represents the core mechanism of RAG (Retrieval-Augmented Generation)?',
+    type: 'technical_mcq',
+    options: [
+      'Fine-tuning an LLM completely on massive specialized datasets',
+      'Querying an external database/document corpus first, and appending relevant contexts straight into the prompt',
+      'Merging multiple pretrained AI model nodes into a singular pipeline',
+      'Using reinforcement learning from human feedback (RLHF)'
+    ],
+    ans: 'Querying an external database/document corpus first, and appending relevant contexts straight into the prompt'
+  },
+  {
+    id: 'ai-3',
+    text: 'What is "Prompt Injection"? Describe one strategy developers use to protect software applications invoking AI APIs.',
+    type: 'theory',
+    options: null,
+    ans: null
+  },
+
+  // --- CODING ROUND ---
+  {
+    id: 'code-1',
+    text: 'Write a function/method to reverse an input string in-place or return a reversed string.',
+    type: 'coding',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'code-2',
+    text: 'Write an algorithm to locate the second largest distinct element in an array of integers. If it does not exist, return -1.',
+    type: 'coding',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'coding-1', // Extra legacy routing fallback mapping
+    text: 'Write a JavaScript function "fizzBuzz(n)" that returns an array of strings from 1 to n with replacements.',
+    type: 'coding',
+    options: null,
+    ans: null
+  },
+
+  // --- PROMPT ENGINEERING ---
+  {
+    id: 'prompt-1',
+    text: 'Create a high-fidelity system prompt to instruct an AI assistant to generate a robust, fully validation-protected React Login Page component using Tailwind classes.',
+    type: 'prompt',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'prompt-2',
+    text: 'Create a prompt designed to explain "Binary Search" to a 10-year-old using a real-world library/book analogy.',
+    type: 'prompt',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'prompt-3',
+    text: 'Create a highly clear prompt template for generating a command-line Python Expense Tracker featuring storage, categorizations, and monthly summaries.',
+    type: 'prompt',
+    options: null,
+    ans: null
+  },
+
+  // --- LEARNING MINDSET ---
+  {
+    id: 'mind-1',
+    text: 'Why do you want to become a Software Engineer? What fuels your professional commitment?',
+    type: 'mindset',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'mind-2',
+    text: 'How do you learn new technologies? Describe your self-directed research workflow.',
+    type: 'mindset',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'mind-3',
+    text: 'What do you do when you get stuck on a difficult code bug and there\'s no direct solution on StackOverflow or AI?',
+    type: 'mindset',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'mind-4',
+    text: 'What project(s) have you built recently? Outline the structure, technology stacked, and what you discovered during development.',
+    type: 'mindset',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'mind-5',
+    text: 'What are your career goals for the next 2-3 years, and how do you plan to manifest them?',
+    type: 'mindset',
+    options: null,
+    ans: null
+  },
+  {
+    id: 'mindset-1', // Extra legacy routing fallback mapping
+    text: 'Describe a situation where a major bug reached production under your watch.',
+    type: 'mindset',
+    options: null,
+    ans: null
+  },
+
+  // --- SELF RATINGS ---
+  { id: 'self-rating-c', text: 'Self assessment score rating for C Programming capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-python', text: 'Self assessment score rating for Python capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-java', text: 'Self assessment score rating for Java capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-dsa', text: 'Self assessment score rating for Data Structures & Algorithms capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-html', text: 'Self assessment score rating for HTML capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-css', text: 'Self assessment score rating for CSS capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-javascript', text: 'Self assessment score rating for Javascript capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-react', text: 'Self assessment score rating for React capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-sql', text: 'Self assessment score rating for SQL database capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-aiMl', text: 'Self assessment score rating for AI/ML concepts capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-generativeAi', text: 'Self assessment score rating for Generative AI and prompt engineering capability', type: 'self_rating', options: null, ans: null },
+  { id: 'self-rating-communication', text: 'Self assessment score rating for professional and verbal communication capability', type: 'self_rating', options: null, ans: null }
+];
+
 // Highly reliable, structured in-memory fallback state to guarantee local sandbox preview executes flawlessly
 const memDatabase = {
   admins: [
@@ -51,88 +293,16 @@ const memDatabase = {
       created_at: new Date('2026-06-11T12:00:00Z')
     }
   ] as any[],
-  questions: [
-    {
-      id: 'apt-1',
-      assessment_id: 'asm-1',
-      question_text: 'A train 120m long passes a telegraph post in 6 seconds. Find the speed of the train in km/h.',
-      question_type: 'aptitude_mcq',
-      options_json: JSON.stringify(['36 km/h', '54 km/h', '72 km/h', '90 km/h']),
-      correct_answer: '72 km/h',
-      marks: 10,
-      created_at: new Date('2026-06-11T12:00:00Z')
-    },
-    {
-      id: 'apt-2',
-      assessment_id: 'asm-1',
-      question_text: 'If 12 men can build a wall in 20 days, how many men will be required to build the same wall in 15 days?',
-      question_type: 'aptitude_mcq',
-      options_json: JSON.stringify(['15 men', '16 men', '18 men', '24 men']),
-      correct_answer: '16 men',
-      marks: 10,
-      created_at: new Date('2026-06-11T12:00:00Z')
-    },
-    {
-      id: 'prog-1',
-      assessment_id: 'asm-1',
-      question_text: 'Which of the following describes the OOP concept "Polymorphism"?',
-      question_type: 'technical_mcq',
-      options_json: JSON.stringify([
-        'Hiding internal implementation details',
-        'Creating a child class from a parent class',
-        'The ability of different classes to respond to the same message in unique ways',
-        'Restricting direct access to some of an object\'s components'
-      ]),
-      correct_answer: 'The ability of different classes to respond to the same message in unique ways',
-      marks: 10,
-      created_at: new Date('2026-06-11T12:00:00Z')
-    },
-    {
-      id: 'web-1',
-      assessment_id: 'asm-1',
-      question_text: 'What is the purpose of React\'s "useEffect" cleanup function?',
-      question_type: 'technical_mcq',
-      options_json: JSON.stringify([
-        'To prevent the component from rendering again',
-        'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs',
-        'To force React to re-fetch state from the server',
-        'To reset initial props parameters'
-      ]),
-      correct_answer: 'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs',
-      marks: 10,
-      created_at: new Date('2026-06-11T12:00:00Z')
-    },
-    {
-      id: 'dsa-1',
-      assessment_id: 'asm-1',
-      question_text: 'What is the worst-case time complexity of inserting an element into a balanced Binary Search Tree (such as an AVL tree) of size N?',
-      question_type: 'technical_mcq',
-      options_json: JSON.stringify(['O(1)', 'O(log N)', 'O(N)', 'O(N log N)']),
-      correct_answer: 'O(log N)',
-      marks: 10,
-      created_at: new Date('2026-06-11T12:00:00Z')
-    },
-    {
-      id: 'coding-1',
-      assessment_id: 'asm-1',
-      question_text: 'Write a JavaScript function "fizzBuzz(n)" that returns an array of strings from 1 to n with appropriate Fizz/Buzz/FizzBuzz replacements.',
-      question_type: 'coding',
-      options_json: null,
-      correct_answer: null,
-      marks: 10,
-      created_at: new Date('2026-06-11T12:00:00Z')
-    },
-    {
-      id: 'mindset-1',
-      assessment_id: 'asm-1',
-      question_text: 'Describe a situation where a major bug reached production under your watch. What remediation steps and professional communications did you lead?',
-      question_type: 'mindset',
-      options_json: null,
-      correct_answer: null,
-      marks: 10,
-      created_at: new Date('2026-06-11T12:00:00Z')
-    }
-  ] as any[],
+  questions: ALL_SEEDED_QUESTIONS.map(q => ({
+    id: q.id,
+    assessment_id: 'asm-1',
+    question_text: q.text,
+    question_type: q.type,
+    options_json: q.options ? JSON.stringify(q.options) : null,
+    correct_answer: q.ans,
+    marks: 10,
+    created_at: new Date('2026-06-11T12:00:00Z')
+  })) as any[],
   assessment_attempts: [
     {
       id: 'attempt-demo-1',
@@ -490,7 +660,7 @@ export class ProductionDatabaseEngine {
         session_id VARCHAR(100) NOT NULL,
         candidate_id INT,
         screen_index INT NOT NULL,
-        question_id VARCHAR(100) NOT NULL,
+        question_id VARCHAR(100) NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
         selected_option TEXT,
         text_answer TEXT,
         code_answer TEXT,
@@ -542,6 +712,15 @@ export class ProductionDatabaseEngine {
       await this.query(`ALTER TABLE coding_submissions ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
 
       console.log('[Db Engine Schema Init] Audit migration columns successfully checked/added.');
+
+      // Alter candidate_screen_responses to add foreign key constraint
+      try {
+        await this.query(`ALTER TABLE candidate_screen_responses DROP CONSTRAINT IF EXISTS fk_csr_question_id;`);
+        await this.query(`ALTER TABLE candidate_screen_responses ADD CONSTRAINT fk_csr_question_id FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE;`);
+        console.log('[Db Engine Schema Init] Enforced candidate_screen_responses.question_id FOREIGN KEY REFERENCES questions(id).');
+      } catch (fkErr: any) {
+        console.warn('[Db Engine Schema Init] fk_csr_question_id foreign key constraint creation skipped/warning:', fkErr.message || fkErr);
+      }
     } catch (migErr: any) {
       console.warn('[Db Engine Schema Init] Audit alter execution warning:', migErr.message || migErr);
     }
@@ -592,86 +771,30 @@ export class ProductionDatabaseEngine {
             100
           );
         `);
-
-        // We can load key seed questions corresponding to the frontend default questions
-        const seedQuestions = [
-          {
-            id: 'apt-1',
-            text: 'A train 120m long passes a telegraph post in 6 seconds. Find the speed of the train in km/h.',
-            type: 'aptitude_mcq',
-            options: ['36 km/h', '54 km/h', '72 km/h', '90 km/h'],
-            ans: '72 km/h'
-          },
-          {
-            id: 'apt-2',
-            text: 'If 12 men can build a wall in 20 days, how many men will be required to build the same wall in 15 days?',
-            type: 'aptitude_mcq',
-            options: ['15 men', '16 men', '18 men', '24 men'],
-            ans: '16 men'
-          },
-          {
-            id: 'prog-1',
-            text: 'Which of the following describes the OOP concept "Polymorphism"?',
-            type: 'technical_mcq',
-            options: [
-              'Hiding internal implementation details',
-              'Creating a child class from a parent class',
-              'The ability of different classes to respond to the same message in unique ways',
-              'Restricting direct access to some of an object\'s components'
-            ],
-            ans: 'The ability of different classes to respond to the same message in unique ways'
-          },
-          {
-            id: 'web-1',
-            text: 'What is the purpose of React\'s "useEffect" cleanup function?',
-            type: 'technical_mcq',
-            options: [
-              'To prevent the component from rendering again',
-              'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs',
-              'To force React to re-fetch state from the server',
-              'To reset initial props parameters'
-            ],
-            ans: 'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs'
-          },
-          {
-            id: 'dsa-1',
-            text: 'What is the worst-case time complexity of inserting an element into a balanced Binary Search Tree (such as an AVL tree) of size N?',
-            type: 'technical_mcq',
-            options: ['O(1)', 'O(log N)', 'O(N)', 'O(N log N)'],
-            ans: 'O(log N)'
-          },
-          {
-            id: 'coding-1',
-            text: 'Write a JavaScript function "fizzBuzz(n)" that returns an array of strings from 1 to n with appropriate Fizz/Buzz/FizzBuzz replacements.',
-            type: 'coding',
-            options: null,
-            ans: null
-          },
-          {
-            id: 'mindset-1',
-            text: 'Describe a situation where a major bug reached production under your watch. What remediation steps and professional communications did you lead?',
-            type: 'mindset',
-            options: null,
-            ans: null
-          }
-        ];
-
-        for (const sq of seedQuestions) {
-          await this.query(`
-            INSERT INTO questions (id, assessment_id, question_text, question_type, options_json, correct_answer, marks)
-            VALUES ($1, $2, $3, $4, $5, $6, $7);
-          `, [
-            sq.id,
-            'asm-1',
-            sq.text,
-            sq.type,
-            sq.options ? JSON.stringify(sq.options) : null,
-            sq.ans,
-            10
-          ]);
-        }
-        console.log('[Db Engine Schema Init] Core questions table seeded.');
       }
+
+      console.log('[Db Engine Schema Init] Seeding full list of 37 questions via UPSERT.');
+      for (const sq of ALL_SEEDED_QUESTIONS) {
+        await this.query(`
+          INSERT INTO questions (id, assessment_id, question_text, question_type, options_json, correct_answer, marks)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (id) DO UPDATE SET 
+            question_text = EXCLUDED.question_text,
+            question_type = EXCLUDED.question_type,
+            options_json = EXCLUDED.options_json,
+            correct_answer = EXCLUDED.correct_answer,
+            marks = EXCLUDED.marks;
+        `, [
+          sq.id,
+          'asm-1',
+          sq.text,
+          sq.type,
+          sq.options ? JSON.stringify(sq.options) : null,
+          sq.ans,
+          10
+        ]);
+      }
+      console.log('[Db Engine Schema Init] All 37 core assessment and self-rating questions seeded and updated successfully.');
     } catch (schemaErr: any) {
       console.error('[Db Engine Schema Init ERR]: Failed to assert schema structure:', schemaErr.message || schemaErr);
     }

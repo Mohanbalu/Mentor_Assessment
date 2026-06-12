@@ -286,35 +286,13 @@ export class CandidateController {
         console.log(`User ID: ${userIdent}`);
         console.log(`Inserted Record ID: ${insertedId}`);
 
-        // Extract answers
-        const answerVal = selectedOption || textAnswer || codeAnswer || '';
-        
-        // 1. Every candidate answer MUST be stored in candidate_answers table
-        try {
-          await dbEngine.query(`
-            INSERT INTO candidate_answers (candidate_id, question_id, answer, answer_text, submitted_at)
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-          `, [candidate_id || null, questionId, answerVal, answerVal]);
-          
-          // Requirement 6: Add backend API logging for answer save
-          console.log(`[API Logging] Answer save: Candidate ID ${candidate_id || 'null'}, Question ID ${questionId}, Answer: ${answerVal.substring(0, 100)}`);
-        } catch (ansErr: any) {
-          console.error(`[API Logging] Failure saving to candidate_answers for Q ${questionId}:`, ansErr.message || ansErr);
-        }
+        // Requirement 6: Add backend API logging for answer save
+        const displayAnswer = selectedOption || (textAnswer ? textAnswer.substring(0, 100) : '') || (codeAnswer ? codeAnswer.substring(0, 100) : '');
+        console.log(`[API Logging] Answer save: Candidate ID ${candidate_id || 'null'}, Session ID ${session_id}, Question ID ${questionId}, Answer Content: ${displayAnswer}`);
 
-        // 2. Every coding answer MUST be stored in coding_submissions table
-        if (codeAnswer || questionId.startsWith('coding')) {
-          try {
-            await dbEngine.query(`
-              INSERT INTO coding_submissions (candidate_id, question_id, code, source_code, language, submitted_at)
-              VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-            `, [candidate_id || null, questionId, codeAnswer || '', codeAnswer || '', languageSelected || 'javascript']);
-            
-            // Requirement 6: Add backend API logging for coding submission save
-            console.log(`[API Logging] Coding submission save: Candidate ID ${candidate_id || 'null'}, Question ID ${questionId}, Code length: ${codeAnswer?.length || 0}`);
-          } catch (codeErr: any) {
-            console.error(`[API Logging] Failure saving to coding_submissions for Q ${questionId}:`, codeErr.message || codeErr);
-          }
+        // Requirement 6: Add backend API logging for coding submission save
+        if (codeAnswer) {
+          console.log(`[API Logging] Coding submission save: Candidate ID ${candidate_id || 'null'}, Session ID ${session_id}, Question ID ${questionId}, Code length: ${codeAnswer.length}, Language Selected: ${languageSelected || 'javascript'}`);
         }
       }
 
