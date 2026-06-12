@@ -11,9 +11,10 @@ import {
 interface CandidateFlowProps {
   onSubmissionComplete: (submission: CandidateAssessmentSubmission) => void;
   questions?: Question[];
+  candidateEmail?: string;
 }
 
-export default function CandidateFlow({ onSubmissionComplete, questions = INITIAL_QUESTIONS }: CandidateFlowProps) {
+export default function CandidateFlow({ onSubmissionComplete, questions = INITIAL_QUESTIONS, candidateEmail }: CandidateFlowProps) {
   // Screens navigation
   // 0: Pre-Assessment Prediction
   // 1: Welcome Page
@@ -30,7 +31,10 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   // 12: Learning Mindset Round
   // 13: Review & Submit
   // 14: Submission Success Page
-  const [currentScreen, setCurrentScreen] = useState<number>(0);
+  const [currentScreen, setCurrentScreen] = useState<number>(() => {
+    const cached = localStorage.getItem('candidate_current_screen');
+    return cached ? parseInt(cached, 10) : 0;
+  });
 
   const [sessionId, setSessionId] = useState<string>(() => {
     const cached = localStorage.getItem('candidate_session_id');
@@ -167,65 +171,192 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   };
 
   // Candidate state structures
-  const [predictedScore, setPredictedScore] = useState<string>('60-80');
-  const [agreedToInstructions, setAgreedToInstructions] = useState<boolean>(false);
+  const [predictedScore, setPredictedScore] = useState<string>(() => {
+    return localStorage.getItem('candidate_predicted_score') || '60-80';
+  });
+  const [agreedToInstructions, setAgreedToInstructions] = useState<boolean>(() => {
+    return localStorage.getItem('candidate_agreed_instructions') === 'true';
+  });
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   
-  const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>({
-    fullName: '',
-    email: '',
-    phone: '',
-    college: '',
-    branch: '',
-    year: 'Third Year',
-    cgpa: '',
-    githubUrl: '',
-    linkedinUrl: '',
-    targetRole: 'Software Engineer',
-    resumeUrl: '',
-    resumeFilename: ''
+  const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>(() => {
+    const cached = localStorage.getItem('candidate_info');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            fullName: parsed.fullName || '',
+            email: parsed.email || '',
+            phone: parsed.phone || '',
+            college: parsed.college || '',
+            branch: parsed.branch || '',
+            year: parsed.year || 'Third Year',
+            cgpa: parsed.cgpa || '',
+            githubUrl: parsed.githubUrl || '',
+            linkedinUrl: parsed.linkedinUrl || '',
+            targetRole: parsed.targetRole || 'Software Engineer',
+            resumeUrl: parsed.resumeUrl || '',
+            resumeFilename: parsed.resumeFilename || ''
+          };
+        }
+      } catch (err) {
+        console.error('Failed to parse cached candidate_info:', err);
+      }
+    }
+    return {
+      fullName: '',
+      email: '',
+      phone: '',
+      college: '',
+      branch: '',
+      year: 'Third Year',
+      cgpa: '',
+      githubUrl: '',
+      linkedinUrl: '',
+      targetRole: 'Software Engineer',
+      resumeUrl: '',
+      resumeFilename: ''
+    };
   });
 
-  const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>({
-    c: 5,
-    python: 5,
-    java: 5,
-    dsa: 5,
-    html: 5,
-    css: 5,
-    javascript: 5,
-    react: 5,
-    sql: 5,
-    aiMl: 5,
-    generativeAi: 5,
-    communication: 5
+  const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(() => {
+    const cached = localStorage.getItem('candidate_self_assessment');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      } catch (err) {}
+    }
+    return {
+      c: 5,
+      python: 5,
+      java: 5,
+      dsa: 5,
+      html: 5,
+      css: 5,
+      javascript: 5,
+      react: 5,
+      sql: 5,
+      aiMl: 5,
+      generativeAi: 5,
+      communication: 5
+    };
   });
 
-  const [responses, setResponses] = useState<CandidateResponse[]>([]);
+  const [responses, setResponses] = useState<CandidateResponse[]>(() => {
+    const cached = localStorage.getItem('candidate_responses');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (err) {}
+    }
+    return [];
+  });
 
   // Telemetry trackers
-  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
-  const [copyCount, setCopyCount] = useState<number>(0);
-  const [pasteCount, setPasteCount] = useState<number>(0);
-  const [answerChanges, setAnswerChanges] = useState<number>(0);
-  const [timePerSection, setTimePerSection] = useState<Record<string, number>>({
-    'Prediction': 0,
-    'Welcome': 0,
-    'Instructions': 0,
-    'Profile': 0,
-    'SelfAssessment': 0,
-    'Aptitude': 0,
-    'Programming': 0,
-    'Web': 0,
-    'DSA': 0,
-    'AI': 0,
-    'Coding': 0,
-    'Prompt': 0,
-    'Mindset': 0
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(() => {
+    const cached = localStorage.getItem('candidate_tab_switch_count');
+    return cached ? parseInt(cached, 10) : 0;
   });
+  const [copyCount, setCopyCount] = useState<number>(() => {
+    const cached = localStorage.getItem('candidate_copy_count');
+    return cached ? parseInt(cached, 10) : 0;
+  });
+  const [pasteCount, setPasteCount] = useState<number>(() => {
+    const cached = localStorage.getItem('candidate_paste_count');
+    return cached ? parseInt(cached, 10) : 0;
+  });
+  const [answerChanges, setAnswerChanges] = useState<number>(() => {
+    const cached = localStorage.getItem('candidate_answer_changes');
+    return cached ? parseInt(cached, 10) : 0;
+  });
+  const [timePerSection, setTimePerSection] = useState<Record<string, number>>(() => {
+    const cached = localStorage.getItem('candidate_time_per_section');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch (err) {}
+    }
+    return {
+      'Prediction': 0,
+      'Welcome': 0,
+      'Instructions': 0,
+      'Profile': 0,
+      'SelfAssessment': 0,
+      'Aptitude': 0,
+      'Programming': 0,
+      'Web': 0,
+      'DSA': 0,
+      'AI': 0,
+      'Coding': 0,
+      'Prompt': 0,
+      'Mindset': 0
+    };
+  });
+
+  // Automatically inject and preserve candidateEmail if provided and email field is not set
+  useEffect(() => {
+    if (candidateEmail && !candidateInfo.email) {
+      setCandidateInfo(prev => {
+        const updated = { ...prev, email: candidateEmail };
+        localStorage.setItem('candidate_info', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [candidateEmail, candidateInfo.email]);
+
+  // Persists draft progress periodically of changes
+  useEffect(() => {
+    localStorage.setItem('candidate_current_screen', currentScreen.toString());
+  }, [currentScreen]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_predicted_score', predictedScore);
+  }, [predictedScore]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_agreed_instructions', agreedToInstructions ? 'true' : 'false');
+  }, [agreedToInstructions]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_info', JSON.stringify(candidateInfo));
+  }, [candidateInfo]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_self_assessment', JSON.stringify(selfAssessment));
+  }, [selfAssessment]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_responses', JSON.stringify(responses));
+  }, [responses]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_tab_switch_count', tabSwitchCount.toString());
+  }, [tabSwitchCount]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_copy_count', copyCount.toString());
+  }, [copyCount]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_paste_count', pasteCount.toString());
+  }, [pasteCount]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_answer_changes', answerChanges.toString());
+  }, [answerChanges]);
+
+  useEffect(() => {
+    localStorage.setItem('candidate_time_per_section', JSON.stringify(timePerSection));
+  }, [timePerSection]);
 
   // Track live active section seconds
   useEffect(() => {

@@ -218,6 +218,22 @@ export default function App() {
       setQuestions(INITIAL_QUESTIONS);
       localStorage.setItem('sa_platform_submissions_v2', JSON.stringify(INITIAL_CANDIDATES));
       localStorage.setItem('sa_platform_questions_v2', JSON.stringify(INITIAL_QUESTIONS));
+
+      // Clear candidate assessment cache
+      localStorage.removeItem('candidate_current_screen');
+      localStorage.removeItem('candidate_info');
+      localStorage.removeItem('candidate_self_assessment');
+      localStorage.removeItem('candidate_responses');
+      localStorage.removeItem('candidate_predicted_score');
+      localStorage.removeItem('candidate_agreed_instructions');
+      localStorage.removeItem('candidate_tab_switch_count');
+      localStorage.removeItem('candidate_copy_count');
+      localStorage.removeItem('candidate_paste_count');
+      localStorage.removeItem('candidate_answer_changes');
+      localStorage.removeItem('candidate_time_per_section');
+      localStorage.removeItem('candidate_session_id');
+      localStorage.removeItem('candidate_db_id');
+      window.location.reload();
     }
   };
 
@@ -355,6 +371,7 @@ export default function App() {
           <CandidateFlow 
             onSubmissionComplete={handleCandidateSubmission}
             questions={questions}
+            candidateEmail={adminUser?.email}
           />
         )}
 
