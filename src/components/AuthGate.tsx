@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, Loader2, Info, ArrowRight, UserPlus, LogIn, User, Sparkles, KeyRound, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, Loader2, Info, ArrowRight, UserPlus, LogIn, User, Sparkles, KeyRound, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 interface AuthGateProps {
   onLoginSuccess: (token: string, user: any) => void;
@@ -10,6 +10,7 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   
@@ -447,13 +448,25 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
                   <Lock className="w-3.5 h-3.5" />
                 </span>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl py-2.5 pl-9 text-xs font-sans text-white placeholder-slate-600 outline-none transition-all"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl py-2.5 pl-9 pr-10 text-xs font-sans text-white placeholder-slate-600 outline-none transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4 text-slate-400 hover:text-indigo-400 transition-colors" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-slate-400 hover:text-indigo-400 transition-colors" />
+                  )}
+                </button>
               </div>
             </div>
 
