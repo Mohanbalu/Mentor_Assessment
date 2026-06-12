@@ -348,7 +348,22 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
         {errorMsg && (
           <div className="bg-red-950/45 border border-red-900/40 p-3.5 rounded-xl text-xs text-red-200 flex items-start gap-2.5">
             <span className="font-bold shrink-0">⚠️ ERROR:</span>
-            <span>{errorMsg}</span>
+            <div className="space-y-2 flex-1">
+              <p>{errorMsg}</p>
+              {(errorMsg.toLowerCase().includes('already registered') || errorMsg.toLowerCase().includes('already verified')) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoginMode(true);
+                    resetNotifications();
+                  }}
+                  className="mt-1 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-sans font-bold text-[11px] py-1.5 px-3 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 w-fit"
+                >
+                  <span>Go to Login</span>
+                  <LogIn className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         )}
 
