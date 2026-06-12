@@ -1,6 +1,18 @@
 // server/src/config/aws.ts - Production AWS S3 File Management Integration Service
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
+function cleanEnvValue(val: string | undefined): string | undefined {
+  if (!val) return undefined;
+  let re = val.trim();
+  // Strip outer quotes if any
+  if ((re.startsWith('"') && re.endsWith('"')) || (re.startsWith("'") && re.endsWith("'"))) {
+    re = re.slice(1, -1).trim();
+  }
+  // Strip any newlines (\r or \n), carriage returns, or tabs
+  re = re.replace(/[\r\n\t]/g, '').trim();
+  return re;
+}
+
 export class ProductionS3Controller {
   private static instance: ProductionS3Controller;
   private region: string;
@@ -8,16 +20,41 @@ export class ProductionS3Controller {
   private client: S3Client;
 
   private constructor() {
-    this.region = process.env.AWS_REGION || 'us-east-1';
-    this.bucketName = process.env.S3_BUCKET || 'assessment-platform-storage';
+    this.region = cleanEnvValue(process.env.AWS_REGION) || 'us-east-1';
+    this.bucketName = cleanEnvValue(process.env.S3_BUCKET) || 'assessment-platform-storage';
     
-    const config: any = { region: this.region };
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-      config.credentials = {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      };
+    const cleanKeyId = cleanEnvValue(process.env.AWS_ACCESS_KEY_ID);
+    const cleanSecretKey = cleanEnvValue(process.env.AWS_SECRET_ACCESS_KEY);
+    const cleanSessionToken = cleanEnvValue(process.env.AWS_SESSION_TOKEN);
+    
+    console.log(`[AWS S3 INIT] Cleansing and loading S3 credentials:`);
+    console.log(`- Original Bucket: "${process.env.S3_BUCKET || ''}" -> Cleaned Bucket: "${this.bucketName}"`);
+    console.log(`- Original Region: "${process.env.AWS_REGION || ''}" -> Cleaned Region: "${this.region}"`);
+    
+    if (cleanKeyId) {
+      console.log(`- Cleaned Access Key ID: "${cleanKeyId.substring(0, Math.min(4, cleanKeyId.length))}...${cleanKeyId.substring(Math.max(0, cleanKeyId.length - 4))}" (Length: ${cleanKeyId.length})`);
+    } else {
+      console.log(`- No AWS_ACCESS_KEY_ID detected`);
     }
+    if (cleanSecretKey) {
+      console.log(`- Cleaned Secret Key: "..." (Length: ${cleanSecretKey.length})`);
+    } else {
+      console.log(`- No AWS_SECRET_ACCESS_KEY detected`);
+    }
+
+    const config: any = { region: this.region };
+    
+    if (cleanKeyId && cleanSecretKey) {
+      config.credentials = {
+        accessKeyId: cleanKeyId,
+        secretAccessKey: cleanSecretKey,
+      };
+      if (cleanSessionToken) {
+        config.credentials.sessionToken = cleanSessionToken;
+        console.log(`- Cleaned Session Token: "..." (Length: ${cleanSessionToken.length})`);
+      }
+    }
+    
     this.client = new S3Client(config);
   }
 
