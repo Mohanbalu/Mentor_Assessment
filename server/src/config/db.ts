@@ -837,6 +837,7 @@ export class ProductionDatabaseEngine {
         let rows = memDatabase.assessment_attempts.map(aa => {
           const cp = memDatabase.candidate_profiles.find(p => p.id === aa.candidate_id) || {};
           const er = memDatabase.evaluation_results.find(r => r.attempt_id === aa.id) || {};
+          const pasObj = memDatabase.pre_assessment_scores.find(p => p.candidate_id === cp.id || p.session_id === aa.id) || {};
           return {
             id: aa.id,
             started_at: aa.started_at,
@@ -849,7 +850,15 @@ export class ProductionDatabaseEngine {
             email: cp.email || 'sandbox@test.local',
             phone: cp.phone || '',
             college: cp.college || 'Sandbox Academy',
+            branch: cp.branch || '',
+            academic_year: cp.academic_year || '',
+            cgpa: cp.cgpa || '',
             target_role: cp.target_role || 'Software Engineering Cohort',
+            github_url: cp.github_url || '',
+            linkedin_url: cp.linkedin_url || '',
+            resume_url: cp.resume_url || '',
+            resume_filename: cp.resume_filename || '',
+            pre_assessment_score: pasObj.expected_score || '70-80',
             aptitude_score: er.aptitude_score || 70,
             technical_score: er.technical_score || 75,
             coding_score: er.coding_score || 80,
@@ -881,6 +890,7 @@ export class ProductionDatabaseEngine {
         }
         const cp = memDatabase.candidate_profiles.find(p => p.id === aa.candidate_id) || {};
         const er = memDatabase.evaluation_results.find(r => r.attempt_id === aa.id) || {};
+        const pasObj = memDatabase.pre_assessment_scores.find(p => p.candidate_id === cp.id || p.session_id === aa.id) || {};
         const row = {
           id: aa.id,
           started_at: aa.started_at,
@@ -898,6 +908,9 @@ export class ProductionDatabaseEngine {
           target_role: cp.target_role,
           github_url: cp.github_url,
           linkedin_url: cp.linkedin_url,
+          resume_url: cp.resume_url || '',
+          resume_filename: cp.resume_filename || '',
+          pre_assessment_score: pasObj.expected_score || '70-80',
           aptitude_score: er.aptitude_score || 70,
           technical_score: er.technical_score || 75,
           coding_score: er.coding_score || 80,

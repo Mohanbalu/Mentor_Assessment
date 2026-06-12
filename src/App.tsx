@@ -128,7 +128,7 @@ export default function App() {
               pasteCount: 0,
               answerChanges: 0,
               timePerSection: {},
-              preAssessmentScorePrediction: '70-80'
+              preAssessmentScorePrediction: row.pre_assessment_score || '70-80'
             },
             status: row.status || 'Evaluated',
             submittedAt: row.submitted_at || row.started_at,

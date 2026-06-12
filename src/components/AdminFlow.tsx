@@ -411,6 +411,7 @@ export default function AdminFlow({
                     <th className="p-4">Candidate Specs</th>
                     <th className="p-4">Academy & College</th>
                     <th className="p-4 text-center">Resume</th>
+                    <th className="p-4 text-center">Pre-Assmt</th>
                     <th className="p-4 text-center">Status Badge</th>
                     <th className="p-4 text-center">Auto-Computed Score</th>
                     <th className="p-4 text-right">Action Modules</th>
@@ -443,6 +444,9 @@ export default function AdminFlow({
                         ) : (
                           <span className="text-slate-600 italic font-mono text-[10px]">None</span>
                         )}
+                      </td>
+                      <td className="p-4 text-center font-mono text-[11px] text-indigo-300 font-bold">
+                        {s.metrics.preAssessmentScorePrediction || 'N/A'}
                       </td>
                       <td className="p-4 text-center">
                         <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded-full ${
@@ -481,7 +485,7 @@ export default function AdminFlow({
 
                   {filteredSubmissions.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-20 text-center text-slate-500 font-mono text-xs">
+                      <td colSpan={7} className="py-20 text-center text-slate-500 font-mono text-xs">
                         No candidate profiles detected matching your filters.
                       </td>
                     </tr>
@@ -649,8 +653,27 @@ export default function AdminFlow({
                     {selectedCandidate.info.fullName}
                   </h2>
                   <p className="text-slate-400 text-xs mt-0.5 font-sans">
-                    Email: {selectedCandidate.info.email} • Target Role: {selectedCandidate.info.targetRole}
+                    Email: {selectedCandidate.info.email} • Phone: {selectedCandidate.info.phone || 'N/A'} • Target Role: {selectedCandidate.info.targetRole}
                   </p>
+                  <p className="text-slate-500 text-xs mt-0.5 font-sans">
+                    Academy: {selectedCandidate.info.college} ({selectedCandidate.info.branch || 'N/A'} • Year: {selectedCandidate.info.year || 'N/A'}{selectedCandidate.info.cgpa ? ` • CGPA: ${selectedCandidate.info.cgpa}` : ''})
+                  </p>
+                  {selectedCandidate.info.resumeUrl && (
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-slate-500 font-bold">RESUME:</span>
+                      <a 
+                        href={selectedCandidate.info.resumeUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-950 hover:bg-slate-850 text-indigo-300 hover:text-indigo-200 border border-indigo-900/40 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {selectedCandidate.info.resumeFilename || 'View Uploaded Resume'}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -285,7 +285,15 @@ export class AssessmentService {
         cp.email,
         cp.phone,
         cp.college,
+        cp.branch,
+        cp.academic_year,
+        cp.cgpa,
         cp.target_role,
+        cp.github_url,
+        cp.linkedin_url,
+        cp.resume_url,
+        cp.resume_filename,
+        pas.expected_score as pre_assessment_score,
         er.aptitude_score,
         er.technical_score,
         er.coding_score,
@@ -294,6 +302,11 @@ export class AssessmentService {
         er.strengths as reviewer_notes
       FROM assessment_attempts aa
       JOIN candidate_profiles cp ON aa.candidate_id = cp.id
+      LEFT JOIN (
+        SELECT candidate_id, expected_score,
+               ROW_NUMBER() OVER(PARTITION BY candidate_id ORDER BY created_at DESC) as rn
+        FROM pre_assessment_scores
+      ) pas ON cp.id = pas.candidate_id AND pas.rn = 1
       LEFT JOIN evaluation_results er ON aa.id = er.attempt_id
     `;
 
@@ -342,6 +355,9 @@ export class AssessmentService {
         cp.target_role,
         cp.github_url,
         cp.linkedin_url,
+        cp.resume_url,
+        cp.resume_filename,
+        pas.expected_score as pre_assessment_score,
         er.aptitude_score,
         er.technical_score,
         er.coding_score,
@@ -352,6 +368,11 @@ export class AssessmentService {
         er.weaknesses
       FROM assessment_attempts aa
       JOIN candidate_profiles cp ON aa.candidate_id = cp.id
+      LEFT JOIN (
+        SELECT candidate_id, expected_score,
+               ROW_NUMBER() OVER(PARTITION BY candidate_id ORDER BY created_at DESC) as rn
+        FROM pre_assessment_scores
+      ) pas ON cp.id = pas.candidate_id AND pas.rn = 1
       LEFT JOIN evaluation_results er ON aa.id = er.attempt_id
       WHERE aa.id = $1
       LIMIT 1;
