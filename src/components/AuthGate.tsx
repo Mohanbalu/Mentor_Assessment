@@ -19,6 +19,7 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
   const [isAdminFlow, setIsAdminFlow] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -26,6 +27,39 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
   const resetNotifications = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
+  };
+
+  const handleResendOtp = async () => {
+    setIsResending(true);
+    resetNotifications();
+    try {
+      // If admin flow, we call the admin login endpoint to trigger the security code
+      const cleanEmail = email.trim().toLowerCase();
+      const url = cleanEmail === 'admin@indiwebpros.in' 
+        ? getApiUrl('/api/auth/admin-login') 
+        : getApiUrl('/api/auth/resend-otp');
+      
+      const payload = cleanEmail === 'admin@indiwebpros.in'
+        ? { email: cleanEmail, password }
+        : { email: cleanEmail };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSuccessMsg(data.message || 'Verification key has been resent successfully.');
+      } else {
+        setErrorMsg(data.message || 'Unable to re-transmit credentials.');
+      }
+    } catch (err) {
+      console.error('[AuthGate] Resend exception:', err);
+      setErrorMsg('Underlying connectivity exception occurred requesting new OTP.');
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -419,9 +453,26 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
                 placeholder="000000"
                 className="w-full bg-slate-950 border-2 border-dashed border-slate-800 focus:border-indigo-500 rounded-xl py-3 text-center text-xl font-mono tracking-[12px] font-bold text-white placeholder-slate-700 outline-none transition-all"
               />
-              <p className="text-[10px] text-center text-slate-500 font-mono">
-                Code expires in 10 minutes. Check your Resend mail or logs.
-              </p>
+              <div className="flex items-center justify-between mt-1.5 px-0.5">
+                <p className="text-[10px] text-slate-500 font-mono">
+                  Expires in 10m. Check Resend mail/logs.
+                </p>
+                <button
+                  type="button"
+                  disabled={isResending}
+                  onClick={handleResendOtp}
+                  className="text-[10px] font-sans font-bold text-indigo-400 hover:text-indigo-300 disabled:text-slate-600 transition-all cursor-pointer underline underline-offset-2 flex items-center gap-1"
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                      <span>Resending...</span>
+                    </>
+                  ) : (
+                    <span>Resend OTP</span>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="flex gap-2 pt-2">

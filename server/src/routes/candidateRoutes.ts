@@ -17,6 +17,10 @@ router.post('/auth/verify-otp', (req, res, next) => {
   otpAuthController.verifyOtp(req, res).catch(next);
 });
 
+router.post('/auth/resend-otp', (req, res, next) => {
+  otpAuthController.resendOtp(req, res).catch(next);
+});
+
 router.post('/auth/login', (req, res, next) => {
   otpAuthController.login(req, res).catch(next);
 });

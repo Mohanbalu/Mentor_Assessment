@@ -449,6 +449,76 @@ export class OtpAuthController {
       });
     }
   }
+
+  /**
+   * POST /api/auth/resend-otp
+   * Input: { email }
+   */
+  public async resendOtp(req: Request, res: Response): Promise<void> {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        message: 'Email address is required.'
+      });
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      // Find user
+      const userQuery = await dbEngine.query(
+        `SELECT first_name, email_verified, role FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1;`,
+        [cleanEmail]
+      );
+
+      if (userQuery.rowCount === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'This email is not registered.'
+        });
+        return;
+      }
+
+      const user = userQuery.rows[0];
+
+      // If already verified and not an admin, no need to resend
+      if (user.email_verified && user.role !== 'admin') {
+        res.status(400).json({
+          success: false,
+          message: 'This account email is already verified.'
+        });
+        return;
+      }
+
+      // Generate a new OTP code
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+      // Save the new OTP record
+      await dbEngine.query(
+        `INSERT INTO email_otps (email, otp, expires_at, verified)
+         VALUES ($1, $2, $3, FALSE);`,
+        [cleanEmail, otp, expiresAt]
+      );
+
+      // Send via Resend
+      const sent = await sendResendOtp(cleanEmail, user.first_name || 'User', otp);
+
+      res.status(200).json({
+        success: true,
+        message: 'A new OTP verification code has been dispatched to your email address.'
+      });
+    } catch (err: any) {
+      console.error('[OTP Resend Fail]:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Underlying network failures or exception while transmitting secure credentials.'
+      });
+    }
+  }
 }
 
 export const otpAuthController = new OtpAuthController();
