@@ -20,6 +20,7 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isRetrieving, setIsRetrieving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -27,6 +28,28 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
   const resetNotifications = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
+  };
+
+  const handleRetrieveOtp = async () => {
+    setIsRetrieving(true);
+    resetNotifications();
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const url = getApiUrl(`/api/auth/latest-otp?email=${encodeURIComponent(cleanEmail)}`);
+      const response = await fetch(url);
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setOtpValue(data.otp); // autofill!
+        setSuccessMsg(`Sandbox OTP loaded: ${data.otp}. Click verify to continue!`);
+      } else {
+        setErrorMsg(data.message || 'No active verification key found in database sandbox.');
+      }
+    } catch (err) {
+      console.error('[AuthGate] Retrieve OTP failed:', err);
+      setErrorMsg('Failed to query database for latest sandbox OTP.');
+    } finally {
+      setIsRetrieving(false);
+    }
   };
 
   const handleResendOtp = async () => {
@@ -473,6 +496,30 @@ export default function AuthGate({ onLoginSuccess, getApiUrl }: AuthGateProps) {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl p-3 text-center space-y-2">
+              <p className="text-[10px] text-slate-400 font-sans leading-relaxed">
+                No email arrived? Retrieve your active sandbox verification code instantly.
+              </p>
+              <button
+                type="button"
+                disabled={isRetrieving}
+                onClick={handleRetrieveOtp}
+                className="w-full bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 text-indigo-300 font-sans font-bold text-[10px] py-1.5 px-3 rounded-lg border border-indigo-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isRetrieving ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin animate-infinite" />
+                    <span>Retrieving Sandbox Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3 text-indigo-400 animate-pulse" />
+                    <span>Retrieve & Auto-Fill Sandbox OTP</span>
+                  </>
+                )}
+              </button>
             </div>
 
             <div className="flex gap-2 pt-2">

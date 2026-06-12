@@ -21,6 +21,10 @@ router.post('/auth/resend-otp', (req, res, next) => {
   otpAuthController.resendOtp(req, res).catch(next);
 });
 
+router.get('/auth/latest-otp', (req, res, next) => {
+  otpAuthController.getLatestOtp(req, res).catch(next);
+});
+
 router.post('/auth/login', (req, res, next) => {
   otpAuthController.login(req, res).catch(next);
 });

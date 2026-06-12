@@ -519,6 +519,55 @@ export class OtpAuthController {
       });
     }
   }
+
+  /**
+   * GET /api/auth/latest-otp?email=...
+   * Retrieve the latest active OTP for an email (useful for local simulation when email delivery is slow/fails)
+   */
+  public async getLatestOtp(req: Request, res: Response): Promise<void> {
+    const { email } = req.query;
+
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        message: 'Email parameter is required.'
+      });
+      return;
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    try {
+      const otpQuery = await dbEngine.query(
+        `SELECT otp, expires_at FROM email_otps 
+         WHERE LOWER(email) = LOWER($1) AND verified = FALSE 
+         ORDER BY id DESC LIMIT 1;`,
+        [cleanEmail]
+      );
+
+      if (otpQuery.rowCount === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'No active OTP found for this email address.'
+        });
+        return;
+      }
+
+      const record = otpQuery.rows[0];
+
+      res.status(200).json({
+        success: true,
+        otp: record.otp,
+        expires_at: record.expires_at
+      });
+    } catch (err: any) {
+      console.error('[Latest OTP Fetch Fail]:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve secure OTP credentials.'
+      });
+    }
+  }
 }
 
 export const otpAuthController = new OtpAuthController();
