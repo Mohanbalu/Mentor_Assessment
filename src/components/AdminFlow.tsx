@@ -53,13 +53,32 @@ export default function AdminFlow({
         
         const mappedResponses: CandidateResponse[] = answersList.map((ans: any) => {
           const codeRow = codingList.find((c: any) => c.question_id === ans.question_id);
+          
+          let parsedOptions: string[] | undefined = undefined;
+          if (ans.options_json) {
+            try {
+              parsedOptions = typeof ans.options_json === 'string'
+                ? JSON.parse(ans.options_json)
+                : ans.options_json;
+            } catch (e) {
+              console.error('[Option Parsing Error] Failed to parse options_json:', e);
+            }
+          }
+
+          const isMcq = ans.question_type?.toLowerCase().includes('mcq');
+
           return {
             questionId: ans.question_id,
-            selectedOption: ans.question_type.includes('mcq') ? ans.answer_text : undefined,
-            textAnswer: (!ans.question_type.includes('mcq') && !codeRow) ? ans.answer_text : undefined,
+            selectedOption: isMcq ? ans.answer_text : undefined,
+            textAnswer: (!isMcq && !codeRow) ? ans.answer_text : undefined,
             codeAnswer: codeRow ? codeRow.source_code : undefined,
             languageSelected: codeRow ? codeRow.language : undefined,
-            answerChangesCount: 0
+            answerChangesCount: 0,
+            questionText: ans.question_text || undefined,
+            correctAnswer: ans.correct_answer || undefined,
+            options: parsedOptions,
+            questionType: ans.question_type || undefined,
+            obtainedMarks: ans.obtained_marks !== undefined ? Number(ans.obtained_marks) : undefined
           };
         });
 
@@ -908,42 +927,163 @@ export default function AdminFlow({
               <h3 className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold border-b border-slate-900 pb-2">
                 SUBMITTED COHORT ANSWERS INSPECTIONS
               </h3>
-
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-5">
                 {selectedCandidate.responses.map((ans, idx) => {
+                  const isCorrect = ans.obtainedMarks !== undefined && ans.obtainedMarks > 0;
+                  const isWrong = ans.obtainedMarks !== undefined && ans.obtainedMarks === 0 && ans.questionType?.toLowerCase().includes('mcq');
+
                   return (
-                    <div key={idx} className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg text-xs font-sans flex flex-col gap-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-mono text-[10px] font-bold text-indigo-400 uppercase">Answer Matrix Node {idx + 1}</span>
-                        {ans.selectedOption && (
-                          <span className="px-2 py-0.5 bg-indigo-950 border border-indigo-900 text-indigo-300 font-mono text-[9px] rounded">
-                            Selected MCQ: {ans.selectedOption}
+                    <div key={idx} className="p-4 bg-slate-900 border border-slate-850 rounded-xl text-xs font-sans flex flex-col gap-4 shadow-inner hover:border-slate-700 transition-all">
+                      
+                      {/* Header with node number, question round type, and marks / outcome */}
+                      <div className="flex justify-between items-center flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] font-bold text-indigo-400 uppercase bg-slate-950 px-2 py-0.5 rounded border border-slate-850">
+                            Node {idx + 1}
                           </span>
-                        )}
-                        {ans.languageSelected && (
-                          <span className="px-2 py-0.5 bg-slate-800 text-emerald-400 font-mono text-[9px] rounded">
-                            Lab Script: {ans.languageSelected.toUpperCase()}
+                          <span className="px-2 py-0.5 bg-slate-800 text-slate-300 font-mono text-[9px] rounded uppercase font-semibold">
+                            {ans.questionType || 'Assessment Prompt'}
                           </span>
+                        </div>
+
+                        {ans.obtainedMarks !== undefined && (
+                          <div className={`px-2.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 border ${
+                            isCorrect 
+                              ? 'bg-emerald-950/40 border-emerald-900/60 text-emerald-400' 
+                              : isWrong 
+                                ? 'bg-rose-950/40 border-rose-900/60 text-rose-400'
+                                : 'bg-slate-950/60 border-slate-850 text-slate-400'
+                          }`}>
+                            <span>
+                              {isCorrect ? 'Correct' : isWrong ? 'Incorrect' : 'Evaluated'}
+                            </span>
+                            <span className="opacity-60">•</span>
+                            <span>{ans.obtainedMarks} Marks</span>
+                          </div>
                         )}
                       </div>
 
-                      {ans.textAnswer && (
-                        <div>
-                          <p className="text-slate-200 font-medium">{ans.textAnswer}</p>
+                      {/* Question Text */}
+                      <div className="flex flex-col gap-1.5 border-l-2 border-indigo-500/60 pl-3.5 py-0.5">
+                        <span className="text-[10px] font-mono uppercase text-slate-500 tracking-wider font-bold">Question Prompt:</span>
+                        <p className="text-slate-100 font-sans text-sm font-medium leading-relaxed">
+                          {ans.questionText || (
+                            <span className="italic text-slate-500">
+                              Synthetic or Legacy checklist entry (Question ID: {ans.questionId})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Display MCQ choices with beautiful color states */}
+                      {ans.options && ans.options.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                          <span className="text-[10px] font-mono uppercase text-slate-500 tracking-wider font-bold pl-3.5">Assigned Answer Keys & Options:</span>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-3.5">
+                            {ans.options.map((opt, oIdx) => {
+                              const isSelected = opt === ans.selectedOption;
+                              const isTarget = opt === ans.correctAnswer;
+                              
+                              let optStyle = "bg-slate-950/40 border-slate-850 text-slate-400";
+                              if (isSelected && isTarget) {
+                                optStyle = "bg-emerald-950/30 border-emerald-500/40 text-emerald-300 font-semibold shadow-sm";
+                              } else if (isSelected && !isTarget) {
+                                optStyle = "bg-rose-950/30 border-rose-500/45 text-rose-300 font-semibold";
+                              } else if (isTarget) {
+                                optStyle = "bg-emerald-950/15 border-emerald-600/25 text-emerald-400";
+                              }
+
+                              return (
+                                <div key={oIdx} className={`px-3 py-2.5 rounded-lg border flex items-center justify-between text-[11.5px] transition-all ${optStyle}`}>
+                                  <span className="leading-tight">{opt}</span>
+                                  <div className="flex items-center gap-1 font-mono text-[8.5px] uppercase font-extrabold shrink-0 ml-2">
+                                    {isSelected && (
+                                      <span className={`px-2 py-0.5 rounded ${isTarget ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-slate-950'}`}>
+                                        Candidate Choice
+                                      </span>
+                                    )}
+                                    {isTarget && !isSelected && (
+                                      <span className="px-2 py-0.5 bg-emerald-650/40 text-emerald-300 rounded border border-emerald-800/30">
+                                        Correct Answer
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
 
-                      {ans.codeAnswer && (
-                        <pre className="bg-slate-950 p-3 border border-slate-850 rounded-lg overflow-x-auto text-[10.5px] font-mono text-indigo-300 leading-relaxed mt-1">
-                          <code>{ans.codeAnswer}</code>
-                        </pre>
+                      {/* Chosen answers when options list is not available */}
+                      {!ans.options && ans.selectedOption && (
+                        <div className="bg-slate-950 p-3.5 border border-slate-850 rounded-lg flex flex-col md:flex-row justify-between gap-3 text-xs pl-3.5">
+                          <div>
+                            <span className="text-[10px] font-mono text-slate-500 uppercase font-bold block">Candidate Chosen MCQ choice:</span>
+                            <span className="text-slate-200 font-sans font-semibold mt-1 block">{ans.selectedOption}</span>
+                          </div>
+                          {ans.correctAnswer && (
+                            <div className="md:text-right">
+                              <span className="text-[10px] font-mono text-slate-500 uppercase font-bold block">Expected answer (correct):</span>
+                              <span className="text-emerald-400 font-sans font-bold mt-1 block">{ans.correctAnswer}</span>
+                            </div>
+                          )}
+                        </div>
                       )}
+
+                      {/* Display essay text answers */}
+                      {ans.textAnswer && (
+                        <div className="bg-slate-950 p-4 border border-slate-850 rounded-lg flex flex-col gap-2 relative">
+                          <span className="text-[10px] font-mono text-slate-500 uppercase font-bold">Candidate Essay Script / Theory Response:</span>
+                          <p className="text-slate-200 font-sans whitespace-pre-wrap leading-relaxed text-xs p-3 bg-slate-900/40 rounded border border-slate-850/40">
+                            {ans.textAnswer}
+                          </p>
+                          {ans.correctAnswer && (
+                            <div className="mt-2 pt-2.5 border-t border-slate-850/60">
+                              <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold flex items-center gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                Model / Expected Answer key comparison checklist:
+                              </span>
+                              <p className="text-slate-400 font-sans text-xs mt-1 leading-relaxed bg-emerald-950/5 p-3 rounded border border-emerald-900/10">
+                                {ans.correctAnswer}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Display Coding responses */}
+                      {ans.codeAnswer && (
+                        <div className="bg-slate-950 border border-slate-850 rounded-lg overflow-hidden flex flex-col">
+                          <div className="bg-slate-900/80 px-3.5 py-1.5 border-b border-slate-850 flex items-center justify-between">
+                            <span className="font-mono text-[9.5px] text-slate-500 uppercase font-bold">Candidate Source Lab script</span>
+                            <span className="px-2 py-0.5 bg-indigo-950 border border-indigo-900 text-indigo-300 font-mono text-[9px] rounded font-bold">
+                              {ans.languageSelected?.toUpperCase() || 'JAVASCRIPT'}
+                            </span>
+                          </div>
+                          <pre className="p-3.5 sm:p-4 overflow-x-auto text-[11px] font-mono text-indigo-300 leading-relaxed bg-slate-950">
+                            <code>{ans.codeAnswer}</code>
+                          </pre>
+                          {ans.correctAnswer && (
+                            <div className="bg-slate-900/40 p-3.5 border-t border-slate-850">
+                              <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold flex items-center gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                Coding Reference / Expected Behavior parameters:
+                              </span>
+                              <p className="text-slate-400 font-sans text-xs mt-1 leading-relaxed bg-emerald-950/5 p-3 rounded border border-emerald-900/10">
+                                {ans.correctAnswer}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                     </div>
                   );
                 })}
 
                 {selectedCandidate.responses.length === 0 && (
-                  <div className="text-center py-6 text-slate-500 font-mono text-xs">
+                  <div className="text-center py-8 text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-xl">
                     No active answer responses recorded for this candidate.
                   </div>
                 )}

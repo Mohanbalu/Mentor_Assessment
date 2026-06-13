@@ -46,6 +46,11 @@ export interface CandidateResponse {
   codeAnswer?: string; // for Coding
   languageSelected?: string; // for Coding
   answerChangesCount: number;
+  questionText?: string;
+  correctAnswer?: string;
+  options?: string[];
+  questionType?: string;
+  obtainedMarks?: number;
 }
 
 export interface TrackingMetrics {
