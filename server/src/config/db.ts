@@ -2,6 +2,27 @@
 import pg from 'pg';
 import dns from 'dns';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+
+// Intercept console.log and console.error to write to the persistent startup log
+const originalLog = console.log;
+const originalError = console.error;
+
+console.log = (...args: any[]) => {
+  originalLog(...args);
+  const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+  try {
+    fs.appendFileSync('./database-startup.log', `${new Date().toISOString()} [LOG] ${msg}\n`, 'utf8');
+  } catch {}
+};
+
+console.error = (...args: any[]) => {
+  originalError(...args);
+  const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+  try {
+    fs.appendFileSync('./database-startup.log', `${new Date().toISOString()} [ERROR] ${msg}\n`, 'utf8');
+  } catch {}
+};
 
 export interface DatabasePoolConfig {
   host?: string;
@@ -927,6 +948,23 @@ export class ProductionDatabaseEngine {
 
     console.log('[Db Engine Schema Init] Verification checks starting.');
     
+    // Log existing schema of assessments and other tables for debugging
+    try {
+      const asmCols = await this.query(`
+        SELECT column_name, data_type, character_maximum_length 
+        FROM information_schema.columns 
+        WHERE table_name = 'assessments';
+      `);
+      console.log('[DEBUG Schema] assessments columns:', JSON.stringify(asmCols.rows));
+      
+      const tableList = await this.query(`
+        SELECT table_name FROM information_schema.tables WHERE table_schema='public';
+      `);
+      console.log('[DEBUG Schema] Existing tables:', JSON.stringify(tableList.rows.map((r: any) => r.table_name)));
+    } catch (dbgErr: any) {
+      console.error('[DEBUG Schema ERR]:', dbgErr.message || dbgErr);
+    }
+    
     const schemas = [
       // 0. admins (secure credentials control)
       `CREATE TABLE IF NOT EXISTS admins (
@@ -1180,7 +1218,7 @@ export class ProductionDatabaseEngine {
 
       console.log('[Db Engine Schema Init] Seeding requested multi-assessments.');
       
-      // Upsert the three assessments
+      // Upsert the four assessments (including self_rating)
       const assessmentBlueprints = [
         {
           id: '1',
@@ -1205,11 +1243,20 @@ export class ProductionDatabaseEngine {
           type: 'Coding',
           duration: 60,
           total_marks: 100
+        },
+        {
+          id: 'self_rating',
+          title: 'Candidate Self Ratings',
+          description: 'Self rating checkpoints for core skills during pre-screening phases.',
+          type: 'SelfRating',
+          duration: 10,
+          total_marks: 120
         }
       ];
 
+      let assessmentSuccessCount = 0;
       for (const ab of assessmentBlueprints) {
-        await this.query(`
+        const res = await this.query(`
           INSERT INTO assessments (id, title, description, assessment_type, duration_minutes, total_marks)
           VALUES ($1, $2, $3, $4, $5, $6)
           ON CONFLICT (id) DO UPDATE SET
@@ -1219,11 +1266,17 @@ export class ProductionDatabaseEngine {
             duration_minutes = EXCLUDED.duration_minutes,
             total_marks = EXCLUDED.total_marks;
         `, [ab.id, ab.title, ab.description, ab.type, ab.duration, ab.total_marks]);
+        console.log(`[Db Engine Schema Init] Seed assessment ${ab.id} Status: rowCount = ${res?.rowCount}`);
+        if (res && res.rowCount > 0) {
+          assessmentSuccessCount += res.rowCount;
+        }
       }
+      console.log(`[Db Engine Schema Init] Assessments insert/update complete. Total assessment rowCount = ${assessmentSuccessCount}`);
 
       console.log(`[Db Engine Schema Init] Seeding full list of ${ALL_SEEDED_QUESTIONS.length} questions via UPSERT.`);
+      let questionSuccessCount = 0;
       for (const sq of ALL_SEEDED_QUESTIONS) {
-        await this.query(`
+        const res = await this.query(`
           INSERT INTO questions (id, assessment_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_option, options_json, correct_answer, marks)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           ON CONFLICT (id) DO UPDATE SET 
@@ -1252,7 +1305,19 @@ export class ProductionDatabaseEngine {
           sq.ans,
           sq.marks || 10
         ]);
+        if (res && res.rowCount > 0) {
+          questionSuccessCount += res.rowCount;
+        }
       }
+      console.log(`[Db Engine Schema Init] Questions insert/update complete. Total question rowCount = ${questionSuccessCount}`);
+
+      // Run live verify queries
+      console.log('[Db Engine Schema Init] Performing verification query checks on tables...');
+      const verifyAsm = await this.query('SELECT COUNT(*) AS cnt FROM assessments;');
+      const verifyQs = await this.query('SELECT COUNT(*) AS cnt FROM questions;');
+      console.log(`[Db Engine Schema Init] VERIFICATION - SELECT COUNT(*) FROM assessments; = ${verifyAsm.rows[0]?.cnt || 0}`);
+      console.log(`[Db Engine Schema Init] VERIFICATION - SELECT COUNT(*) FROM questions; = ${verifyQs.rows[0]?.cnt || 0}`);
+
       console.log('[Db Engine Schema Init] All core multi-assessments and questions seeded and updated successfully in PostgreSQL.');
     } catch (schemaErr: any) {
       console.error('[Db Engine Schema Init ERR]: Failed to assert schema structure:', schemaErr.message || schemaErr);
