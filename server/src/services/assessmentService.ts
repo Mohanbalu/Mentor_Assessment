@@ -316,15 +316,30 @@ export class AssessmentService {
       console.log(`Inserted Record ID: ${evalId}`);
 
       // 8. PHASE 5: Insert calculation into results table
-      await dbQuery(`
-        INSERT INTO results (candidate_id, assessment_id, score, percentage, submitted_at)
-        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP);
-      `, [
-        candidateId,
-        assessmentId,
-        parseFloat(finalPercentage.toString()),
-        parseFloat(finalPercentage.toString())
-      ]);
+      console.log(`[Results Insertion] Starting results insertion. Params: candidate_id=${candidateId}, assessment_id=${assessmentId}, score=${finalPercentage}, percentage=${finalPercentage}`);
+      try {
+        const resInsert = await dbQuery(`
+          INSERT INTO results (
+            candidate_id,
+            assessment_id,
+            score,
+            percentage,
+            submitted_at
+          )
+          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP);
+        `, [
+          candidateId,
+          assessmentId,
+          parseFloat(finalPercentage.toString()),
+          parseFloat(finalPercentage.toString())
+        ]);
+        console.log(`[Results Insertion SUCCESS] Results row saved successfully. rowCount: ${resInsert?.rowCount}`);
+      } catch (resultsErr: any) {
+        console.error('[Results Insertion ERROR] Failed to insert into results table:', resultsErr.message || resultsErr);
+        if (resultsErr.stack) {
+          console.error('[Results Insertion ERROR STACK]:', resultsErr.stack);
+        }
+      }
 
       // Requirement 6: Add backend API logging for result generation
       console.log(`[API Logging] Result generation: Candidate ID ${candidateId}, Assessment ID ${assessmentId}, Score: ${finalPercentage}, Percentage: ${finalPercentage}`);
