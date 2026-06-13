@@ -136,8 +136,44 @@ export class AssessmentService {
       }
 
       // 4. Create unique attempt mapping
-      const attemptId = submission.id || `attempt-${Date.now()}`;
+      const attemptId = submission.id || `cand-${Date.now()}`;
       console.log(`[Assessment Service] Saving attempt: "${attemptId}" for Candidate ID: ${candidateId}`);
+
+      // Crucial Fix: Insert into assessment_attempts first to satisfy foreign key relationships in target tables
+      await dbQuery(`
+        INSERT INTO assessment_attempts (
+          id,
+          candidate_id,
+          assessment_id,
+          started_at,
+          submitted_at,
+          total_score,
+          percentage,
+          status
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          NOW(),
+          NOW(),
+          0,
+          0,
+          'Submitted'
+        )
+        ON CONFLICT (id) DO NOTHING;
+      `, [attemptId, candidateId, assessmentId]);
+
+      // Verify insertion
+      const verifyAttempt = await dbQuery(`
+        SELECT id FROM assessment_attempts WHERE id = $1;
+      `, [attemptId]);
+
+      if (!verifyAttempt.rowCount || verifyAttempt.rowCount === 0) {
+        throw new Error(`Failed to create assessment attempt record for id: ${attemptId}`);
+      }
+
+      console.log(`[Assessment Service] Attempt row created successfully: ${attemptId}`);
 
       // 5. Clear any stale answer registers to enable updates safely
       await dbQuery('DELETE FROM candidate_answers WHERE attempt_id = $1;', [attemptId]);
