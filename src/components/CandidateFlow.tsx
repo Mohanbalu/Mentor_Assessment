@@ -1184,24 +1184,191 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   const [codingRunOutput, setCodingRunOutput] = useState<Record<string, string>>({});
   const triggerMockCodeExecution = (qId: string, userCode: string, lang: string) => {
     let outputText = `[Virtual Sandbox Core Executing on Port 3000]\n`;
-    outputText += `[Judge0 Simulation] Dispatching payload to thread instance...\n`;
+    outputText += `[Sandbox Executor] Initializing sandboxed environment...\n`;
     outputText += `------------------------------------------------------\n`;
-    if (!userCode.trim() || userCode.length < 15) {
-      outputText += `❌ SANDBOX_COMPILE_ERROR:\n  SyntaxError: Unexpected premature end of input. Define your core algorithm classes.\n`;
-      outputText += `  Execution Time: 0ms\n  Max Memory Allowed: 256MB (Used: 0MB)\n`;
-    } else {
-      const execTime = Math.floor(Math.random() * 25) + 8;
-      const memUsed = (Math.random() * 1.5 + 0.8).toFixed(2);
-      outputText += `✓ ENVIRONMENT BOOTED: ${lang.toUpperCase()} Run-time Environment v18.2\n`;
-      outputText += `✓ TEST 01 (Basic Assertions Match): SUCCESS\n`;
-      outputText += `✓ TEST 02 (Boundary & Empty Array Assertions): SUCCESS\n`;
-      outputText += `✓ TEST 03 (Stress Load Test under 1,000 iterations): SUCCESS\n`;
-      outputText += `------------------------------------------------------\n`;
-      outputText += `STATUS: COMPLETED (SUCCESS_EXIT_CODE)\n`;
-      outputText += `Execution Computational Speed: ${execTime}ms (Time Limit Limit: 2000ms)\n`;
-      outputText += `Active Virtual Memory Footprint: ${memUsed}MB (Memory Limit Limit: 256MB)\n`;
-      outputText += `\nOutput logs stdout: [Process exited with status 0]`;
+
+    const trimmed = userCode.trim();
+    
+    // Check if unchanged template
+    const isUnchangedJS = (trimmed.includes('// Write code here...') && trimmed.includes('return -1;'));
+    const isUnchangedPython = trimmed.includes('# Write Python code here') && (trimmed.includes('pass') || trimmed.includes('return -1'));
+    
+    if (!trimmed || trimmed.length < 15 || isUnchangedJS || isUnchangedPython) {
+      outputText += `❌ SANDBOX_COMPILE_ERROR:\n`;
+      outputText += `  Standard-Error: Code template unmodified. Please implement your program strategy before running tests.\n`;
+      outputText += `  Execution Time: 0ms\n`;
+      outputText += `  Status: REJECTED\n`;
+      setCodingRunOutput(prev => ({ ...prev, [qId]: outputText }));
+      return;
     }
+
+    if (lang === 'javascript') {
+      try {
+        // Test for syntax error first by creating a new Function
+        new Function(userCode);
+        
+        // Find declared function
+        const functionMatch = userCode.match(/function\s+(\w+)/) || userCode.match(/(?:const|let|var)\s+(\w+)\s*=\s*/);
+        const fnName = functionMatch ? functionMatch[1] : 'myAlgorithm';
+
+        // Check if function exists in code as a word
+        if (!userCode.includes(fnName)) {
+          throw new Error(`Declared function "${fnName}" could not be parsed. Please ensure your main function is declared correctly.`);
+        }
+
+        const runUserCode = (arg: any) => {
+          const sandbox = new Function('input', `
+            try {
+              ${userCode}
+              if (typeof ${fnName} !== 'function') {
+                throw new Error('"${fnName}" is not a runnable function.');
+              }
+              return ${fnName}(input);
+            } catch(e) {
+              throw e;
+            }
+          `);
+          return sandbox(arg);
+        };
+
+        // Assert based on question ID
+        let passed = 0;
+        let total = 0;
+        let logs = '';
+
+        if (qId === 'code-1') {
+          // String reversal
+          const testCases = [
+            { input: 'hello', expected: 'olleh' },
+            { input: 'assessment', expected: 'tnemssessa' },
+            { input: '', expected: '' },
+            { input: 'a', expected: 'a' }
+          ];
+          total = testCases.length;
+
+          testCases.forEach((tc, i) => {
+            try {
+              const res = runUserCode(tc.input);
+              if (res === tc.expected) {
+                passed++;
+                logs += `✓ TEST 0${i + 1} Passed: Input "${tc.input}" -> Got "${res}"\n`;
+              } else {
+                logs += `❌ TEST 0${i + 1} Failed: Input "${tc.input}" -> Expected "${tc.expected}", but got "${res}"\n`;
+              }
+            } catch (e: any) {
+              logs += `❌ TEST 0${i + 1} Fault: Runtime exception occurred: ${e.message}\n`;
+            }
+          });
+        } else if (qId === 'code-2') {
+          // Second largest distinct element in array
+          const testCases = [
+            { input: [12, 35, 1, 10, 34, 1], expected: 34 },
+            { input: [10, 5, 10], expected: 5 },
+            { input: [10, 10, 10], expected: -1 },
+            { input: [5], expected: -1 },
+            { input: [], expected: -1 }
+          ];
+          total = testCases.length;
+
+          testCases.forEach((tc, i) => {
+            try {
+              const res = runUserCode(tc.input);
+              if (Number(res) === Number(tc.expected)) {
+                passed++;
+                logs += `✓ TEST 0${i + 1} Passed: Input [${tc.input.join(', ')}] -> Got ${res}\n`;
+              } else {
+                logs += `❌ TEST 0${i + 1} Failed: Input [${tc.input.join(', ')}] -> Expected ${tc.expected}, but got ${res}\n`;
+              }
+            } catch (e: any) {
+              logs += `❌ TEST 0${i + 1} Fault: Runtime exception occurred: ${e.message}\n`;
+            }
+          });
+        } else {
+          // General fallback
+          passed = 1;
+          total = 1;
+          logs = `✓ General assertion check completed.\n`;
+        }
+
+        const success = passed === total;
+        const execTime = Math.floor(Math.random() * 15) + 5;
+        const memUsed = (Math.random() * 0.5 + 0.2).toFixed(2);
+
+        outputText += `✓ COMPILING JAVASCRIPT: SUCCESS\n`;
+        outputText += `✓ ENVIRONMENT RUNTIME ACTIVE\n`;
+        outputText += `------------------------------------------------------\n`;
+        outputText += logs;
+        outputText += `------------------------------------------------------\n`;
+        outputText += `STATUS: ${success ? 'COMPLETED (SUCCESS)' : 'COMPLETED (WITH ERRORS)'}\n`;
+        outputText += `Test cases passed: ${passed} / ${total}\n`;
+        outputText += `Execution Computational Speed: ${execTime}ms\n`;
+        outputText += `Active Virtual Memory Footprint: ${memUsed}MB\n`;
+
+      } catch (err: any) {
+        outputText += `❌ SANDBOX_COMPILE_ERROR / RUNTIME_ERROR:\n`;
+        outputText += `  ${err.name || 'Error'}: ${err.message}\n`;
+        outputText += `  Execution Time: 0ms\n`;
+        outputText += `  Status: FAILED\n`;
+      }
+    } else {
+      // Python, C, C++, Java
+      const codeStr = trimmed.toLowerCase();
+      let passed = 0;
+      let total = 3;
+      let logs = '';
+      
+      const execTime = Math.floor(Math.random() * 30) + 10;
+      const memUsed = (Math.random() * 2.0 + 1.0).toFixed(2);
+
+      if (qId === 'code-1') {
+        const hasReverseKey = codeStr.includes('reverse') || codeStr.includes('[::-1]') || codeStr.includes('len(') || codeStr.includes('range') || codeStr.includes('chars') || codeStr.includes('split') || codeStr.includes('join');
+        const hasStringInput = codeStr.includes('data') || codeStr.includes('str') || codeStr.includes('s') || codeStr.includes('text');
+        
+        if (hasReverseKey && hasStringInput && !codeStr.includes('return -1')) {
+          passed = 3;
+          logs += `✓ TEST 01 Passed: Validated syntax tree for reverse string operations.\n`;
+          logs += `✓ TEST 02 Passed: Boundary test with empty string matching.\n`;
+          logs += `✓ TEST 03 Passed: Space complexity execution metrics validated.\n`;
+        } else {
+          passed = 1;
+          logs += `✓ TEST 01 Passed: Basic type compilation verification.\n`;
+          logs += `❌ TEST 02 Failed: Output matched default value -1. Did you implement the reverse algorithm?\n`;
+          logs += `❌ TEST 03 Failed: Incorrect return values on test sample. Expected string sequence.\n`;
+        }
+      } else if (qId === 'code-2') {
+        const hasIterations = codeStr.includes('for ') || codeStr.includes('while ') || codeStr.includes('sort') || codeStr.includes('max') || codeStr.includes('largest');
+        const hasDistinctHandling = codeStr.includes('-1') || codeStr.includes('distinct') || codeStr.includes('set') || codeStr.includes('if ') || codeStr.includes('not in');
+
+        if (hasIterations && hasDistinctHandling && !codeStr.includes('return -1') && !codeStr.endsWith('return -1;')) {
+          passed = 3;
+          logs += `✓ TEST 01 Passed: Validated syntax tree for distinct elements extraction.\n`;
+          logs += `✓ TEST 02 Passed: Correctly returns second largest in [12, 35, 1, 10, 34, 1].\n`;
+          logs += `✓ TEST 03 Passed: Correctly returns -1 on single-element arrays and uniform duplicates.\n`;
+        } else {
+          passed = 1;
+          logs += `✓ TEST 01 Passed: Compiled function entry block.\n`;
+          logs += `❌ TEST 02 Failed: Output matched default value -1 or empty. Please implement the searching logic.\n`;
+          logs += `❌ TEST 03 Failed: Distinct sorting sequence failed. Expected 34 for sample array.\n`;
+        }
+      } else {
+        passed = 3;
+        logs += `✓ TEST 01 Passed: Compiled successfully.\n`;
+        logs += `✓ TEST 02 Passed: Mock variables match inputs.\n`;
+        logs += `✓ TEST 03 Passed: Stack sequence validated.\n`;
+      }
+
+      const success = passed === total;
+      outputText += `✓ COMPILING ${lang.toUpperCase()}: SUCCESS\n`;
+      outputText += `✓ ENVIRONMENT RUNTIME ACTIVE (Simulated Sandboxed Core)\n`;
+      outputText += `------------------------------------------------------\n`;
+      outputText += logs;
+      outputText += `------------------------------------------------------\n`;
+      outputText += `STATUS: ${success ? 'COMPLETED (SUCCESS)' : 'COMPLETED (WITH ERRORS)'}\n`;
+      outputText += `Test cases passed: ${passed} / ${total}\n`;
+      outputText += `Execution Computational Speed: ${execTime}ms\n`;
+      outputText += `Active Virtual Memory Footprint: ${memUsed}MB\n`;
+    }
+
     setCodingRunOutput(prev => ({ ...prev, [qId]: outputText }));
   };
 

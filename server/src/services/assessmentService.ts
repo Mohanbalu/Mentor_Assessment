@@ -123,7 +123,7 @@ export class AssessmentService {
       ]);
 
       // 3. PHASE 5: Evaluation Engine - Fetch correct answers from the questions table
-      const qCheck = await dbQuery('SELECT id, correct_answer, correct_option, marks, question_type FROM questions WHERE assessment_id = $1;', [assessmentId]);
+      const qCheck = await dbQuery('SELECT id, correct_answer, correct_option, marks, question_type, assessment_id FROM questions;', []);
       const dbQuestions = qCheck.rows as any[];
       
       let calculatedScore = 0;
@@ -132,7 +132,6 @@ export class AssessmentService {
 
       for (const dq of dbQuestions) {
         dbQuestionMap[String(dq.id)] = dq;
-        totalMaxMarks += dq.marks || 10;
       }
 
       // 4. Create unique attempt mapping
@@ -207,6 +206,7 @@ export class AssessmentService {
         if (qData) {
           qType = qData.question_type;
           marksAllocated = qData.marks || 10;
+          totalMaxMarks += marksAllocated;
           
           if (qType === 'aptitude_mcq' || qType === 'technical_mcq') {
             const chosen = (String(resp.selectedOption || '')).trim().toUpperCase();
@@ -218,10 +218,14 @@ export class AssessmentService {
               obtainedMarks = marksAllocated;
             }
           } else if (qType === 'coding') {
-            // For coding block, give full marks as baseline if submitted
-            obtainedMarks = marksAllocated;
+            const hasCode = resp.codeAnswer && resp.codeAnswer.trim().length > 10;
+            obtainedMarks = hasCode ? marksAllocated : 0;
           } else {
-            obtainedMarks = marksAllocated;
+            const textL = (resp.textAnswer || resp.selectedOption || '').trim().length;
+            if (textL > 50) obtainedMarks = marksAllocated;
+            else if (textL > 10) obtainedMarks = Math.round(marksAllocated * 0.6);
+            else if (textL > 0) obtainedMarks = Math.round(marksAllocated * 0.3);
+            else obtainedMarks = 0;
           }
         } else {
           // Fallback guess taxonomy
@@ -235,7 +239,10 @@ export class AssessmentService {
             qType = 'coding';
             marksAllocated = 20;
           }
-          obtainedMarks = (qType === 'coding' ? 20 : 5); // default mock correct response marks
+          
+          totalMaxMarks += marksAllocated;
+          const answered = (resp.selectedOption || resp.textAnswer || resp.codeAnswer || '').trim().length > 0;
+          obtainedMarks = answered ? (qType === 'coding' ? 20 : 5) : 0;
         }
 
         calculatedScore += obtainedMarks;
@@ -282,7 +289,7 @@ export class AssessmentService {
       }
 
       // Compute weighted percentage (or final score out of 100)
-      const finalPercentage = totalMaxMarks > 0 ? Number(((calculatedScore / totalMaxMarks) * 100).toFixed(2)) : 75;
+      const finalPercentage = totalMaxMarks > 0 ? Math.min(100, Math.max(0, Number(((calculatedScore / totalMaxMarks) * 100).toFixed(2)))) : 75;
 
       // Update assessment attempts
       await dbQuery(`

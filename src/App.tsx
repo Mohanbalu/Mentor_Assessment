@@ -149,7 +149,8 @@ export default function App() {
         
         // Map database attempt records directly to UI schemas
         const mapped: CandidateAssessmentSubmission[] = resJson.data.map((row: any) => {
-          const rawScore = row.total_score ? parseFloat(row.total_score) : 70;
+          const rawScore = Math.min(100, Math.max(0, row.total_score ? parseFloat(row.total_score) : 70));
+          const cleanScore = (val: any, fallback: number) => Math.min(100, Math.max(0, val ? parseFloat(val) : fallback));
           return {
             id: row.id,
             info: {
@@ -182,24 +183,24 @@ export default function App() {
             submittedAt: row.submitted_at || row.started_at,
             score: rawScore,
             sectionScores: {
-              Aptitude: row.aptitude_score ? parseFloat(row.aptitude_score) : 70,
-              Programming: row.technical_score ? parseFloat(row.technical_score) : 70,
-              Coding: row.coding_score ? parseFloat(row.coding_score) : 70,
-              Mindset: row.mindset_score ? parseFloat(row.mindset_score) : 70
+              Aptitude: cleanScore(row.aptitude_score, 70),
+              Programming: cleanScore(row.technical_score, 70),
+              Coding: cleanScore(row.coding_score, 70),
+              Mindset: cleanScore(row.mindset_score, 70)
             },
             evaluation: {
               technicalScore: {
-                programming: Math.round((row.technical_score || 70)/10),
-                dsa: Math.round((row.technical_score || 70)/10),
-                webDevelopment: Math.round((row.technical_score || 70)/10),
+                programming: Math.min(10, Math.max(0, Math.round(cleanScore(row.technical_score, 70) / 10))),
+                dsa: Math.min(10, Math.max(0, Math.round(cleanScore(row.technical_score, 70) / 10))),
+                webDevelopment: Math.min(10, Math.max(0, Math.round(cleanScore(row.technical_score, 70) / 10))),
                 ai: 8
               },
               behavioralScore: {
                 communication: 8,
-                learningAbility: Math.round((row.mindset_score || 70)/10),
-                problemSolving: Math.round((row.coding_score || 70)/10)
+                learningAbility: Math.min(10, Math.max(0, Math.round(cleanScore(row.mindset_score, 70) / 10))),
+                problemSolving: Math.min(10, Math.max(0, Math.round(cleanScore(row.coding_score, 70) / 10)))
               },
-              overallRating: Number((rawScore / 10).toFixed(1)),
+              overallRating: Math.min(10, Math.max(0, Number((rawScore / 10).toFixed(1)))),
               level: rawScore >= 80 ? 'Advanced' : (rawScore >= 50 ? 'Intermediate' : 'Beginner'),
               recommendation: row.recommendation || '6 Month Training',
               reviewerNotes: row.reviewer_notes || 'Database synchronizer automatic record entry evaluation.'
