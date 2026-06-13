@@ -183,6 +183,21 @@ export class AssessmentService {
       // 6. Loop responses, evaluate multiple choices, and create records
       for (const resp of responses) {
         const questionId = String(resp.questionId || 'unknown-q');
+
+        // Do not insert synthetic frontend identifiers
+        const syntheticIds = ['prompt-1', 'prompt-2', 'prompt-3', 'mind-1', 'mind-2', 'mind-3'];
+        if (syntheticIds.includes(questionId)) {
+          console.error('[INVALID QUESTION ID]', questionId);
+          continue;
+        }
+
+        // Verify if question_id exists in 'questions' table
+        const checkQ = await dbQuery('SELECT id FROM questions WHERE id = $1;', [questionId]);
+        if (!checkQ || !checkQ.rowCount || checkQ.rowCount === 0) {
+          console.error('[INVALID QUESTION ID]', questionId);
+          continue;
+        }
+
         const qData = dbQuestionMap[questionId];
         
         let qType = 'descriptive';
@@ -225,6 +240,14 @@ export class AssessmentService {
 
         calculatedScore += obtainedMarks;
         const textOfAnswer = resp.selectedOption || resp.textAnswer || resp.codeAnswer || '';
+
+        // Add logging immediately before every INSERT INTO candidate_answers
+        console.log('[Candidate Answer Insert]', {
+          attemptId,
+          candidateId,
+          questionId,
+          answer: textOfAnswer
+        });
 
         // Save into candidate_answers
         await dbQuery(`
