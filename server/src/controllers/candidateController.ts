@@ -383,6 +383,48 @@ export class CandidateController {
   }
 
   /**
+   * Retrieves all assessments from PostgreSQL database
+   */
+  public async getAssessments(req: Request, res: Response): Promise<void> {
+    console.log('[API Logging] Fetching assessments list from PostgreSQL');
+    try {
+      const result = await dbEngine.query('SELECT * FROM assessments ORDER BY id;');
+      res.status(200).json({
+        success: true,
+        data: result.rows
+      });
+    } catch (err: any) {
+      console.error('[API Logging] Failed to fetch assessments:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve assessments from database'
+      });
+    }
+  }
+
+  /**
+   * Retrieves all questions for a specific assessment from PostgreSQL database
+   */
+  public async getAssessmentQuestions(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    console.log(`[API Logging] Question load requested for assessment ID ${id}: FETCH from PostgreSQL`);
+    try {
+      const result = await dbEngine.query('SELECT * FROM questions WHERE assessment_id = $1 ORDER BY id;', [id]);
+      console.log(`[API Logging] Question load success: fetched ${result.rows.length} questions for assessment ${id}.`);
+      res.status(200).json({
+        success: true,
+        data: result.rows
+      });
+    } catch (err: any) {
+      console.error('[API Logging] Failed to load assessment questions:', err.message || err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve assessment questions from database'
+      });
+    }
+  }
+
+  /**
    * Retrieves candidate profile by email
    */
   public async getProfile(req: Request, res: Response): Promise<void> {

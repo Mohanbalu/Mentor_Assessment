@@ -34,7 +34,10 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
   // 14: Submission Success Page
   // Simple helper to get the partitioned localStorage key names for the active logged-in candidate
   const getScopedKey = (baseKey: string) => {
-    if (!candidateEmail) return `candidate_${baseKey}`;
+    if (!candidateEmail) {
+      // Return a temporary, non-leakable key namespace for the guest / fallback frames
+      return `temp_guest_${baseKey}`;
+    }
     const cleanEmail = candidateEmail.trim().toLowerCase();
     return `cand_${cleanEmail}_${baseKey}`;
   };
@@ -57,6 +60,99 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     const cached = localStorage.getItem(getScopedKey('db_id'));
     return cached ? parseInt(cached, 10) : null;
   });
+
+  const [loadedQuestions, setLoadedQuestions] = useState<Question[]>(INITIAL_QUESTIONS);
+
+  useEffect(() => {
+    let active = true;
+    const fetchQuestions = async () => {
+      try {
+        console.log('[CandidateFlow] Loading questions dynamically from PostgreSQL assessments...');
+        const [res1, res2, res3] = await Promise.all([
+          fetch(getApiUrl('/api/assessments/1/questions')),
+          fetch(getApiUrl('/api/assessments/2/questions')),
+          fetch(getApiUrl('/api/assessments/3/questions'))
+        ]);
+        
+        if (!active) return;
+
+        const data1 = res1.ok ? await res1.json() : null;
+        const data2 = res2.ok ? await res2.json() : null;
+        const data3 = res3.ok ? await res3.json() : null;
+
+        const allRawQuestions = [
+          ...(data1?.success && Array.isArray(data1.data) ? data1.data : []),
+          ...(data2?.success && Array.isArray(data2.data) ? data2.data : []),
+          ...(data3?.success && Array.isArray(data3.data) ? data3.data : [])
+        ];
+
+        if (allRawQuestions.length > 0) {
+          console.log(`[CandidateFlow] Loaded ${allRawQuestions.length} questions from database.`);
+          
+          const mappedQuestions = allRawQuestions.map((q: any) => {
+            let category: 'Aptitude' | 'Programming' | 'Web' | 'DSA' | 'AI' | 'Coding' | 'Prompt' | 'Mindset' = 'Aptitude';
+            
+            if (q.assessment_id === '1') {
+              category = 'Aptitude';
+            } else if (q.assessment_id === '2') {
+              const qIdNum = Number(q.id);
+              if (qIdNum >= 21 && qIdNum <= 25) {
+                category = 'Programming';
+              } else if (qIdNum >= 26 && qIdNum <= 30) {
+                category = 'Web';
+              } else if (qIdNum >= 31 && qIdNum <= 35) {
+                category = 'DSA';
+              } else if (qIdNum >= 36 && qIdNum <= 40) {
+                category = 'AI';
+              } else {
+                if (q.id.startsWith('prog-')) category = 'Programming';
+                else if (q.id.startsWith('web-')) category = 'Web';
+                else if (q.id.startsWith('dsa-')) category = 'DSA';
+                else if (q.id.startsWith('ai-')) category = 'AI';
+                else category = 'Programming';
+              }
+            } else if (q.assessment_id === '3') {
+              category = 'Coding';
+            }
+
+            let options: string[] | undefined = undefined;
+            if (q.option_a) {
+              options = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean) as string[];
+            } else if (q.options_json) {
+              try {
+                options = JSON.parse(q.options_json);
+              } catch {
+                options = undefined;
+              }
+            }
+
+            return {
+              id: String(q.id),
+              category,
+              type: q.question_type === 'coding' ? 'Coding' : (q.question_type === 'theory' || q.question_type === 'descriptive' ? 'Theory' : 'MCQ'),
+              questionText: q.question_text,
+              options,
+              correctAnswer: q.correct_option || q.correct_answer || undefined,
+              difficulty: 'Intermediate' as const
+            };
+          });
+
+          // Mix with Prompt / Mindset Fallback classes
+          setLoadedQuestions(prev => {
+            const staticPromptsAndMindsets = prev.filter(p => p.category === 'Prompt' || p.category === 'Mindset');
+            return [...mappedQuestions, ...staticPromptsAndMindsets];
+          });
+        }
+      } catch (err) {
+        console.error('[CandidateFlow] Failed to load assessments questions:', err);
+      }
+    };
+
+    fetchQuestions();
+    return () => {
+      active = false;
+    };
+  }, [candidateEmail]);
 
   const handleSavePreAssessmentScore = async (scoreVal: string) => {
     try {
@@ -149,10 +245,27 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     if (currentScreen === 4) {
       // Save Self-Assessment screen responses
       try {
-        const payloadResponses = Object.entries(selfAssessment).map(([key, val]) => ({
-          questionId: `self-rating-${key}`,
-          selectedOption: val.toString()
-        }));
+        const payloadResponses = Object.entries(selfAssessment).map(([key, val]) => {
+          const selfRatingToDbId: Record<string, string> = {
+            c: '46',
+            python: '47',
+            java: '48',
+            dsa: '49',
+            html: '50',
+            css: '51',
+            javascript: '52',
+            react: '53',
+            sql: '54',
+            aiMl: '55',
+            generativeAi: '56',
+            communication: '57'
+          };
+          const dbQuestionId = selfRatingToDbId[key] || `self-rating-${key}`;
+          return {
+            questionId: dbQuestionId,
+            selectedOption: val.toString()
+          };
+        });
         await fetch(getApiUrl('/api/screen-responses'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -526,7 +639,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
       12: 'Mindset'
     };
     const cat = categoryMap[screen];
-    return questions.filter(q => q.category === cat);
+    return loadedQuestions.filter(q => q.category === cat);
   };
 
   // Section Timer countdown logic
@@ -578,7 +691,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     ];
     categories.forEach(cat => { sectionCalculations[cat] = 0; });
 
-    questions.forEach(q => {
+    loadedQuestions.forEach(q => {
       const resp = responses.find(r => r.questionId === q.id);
       if (!resp) return;
 
@@ -643,8 +756,9 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     }
 
     // Compose custom report metrics
-    const finalSubmission: CandidateAssessmentSubmission = {
+    const finalSubmission: any = {
       id: `cand-${Date.now()}`,
+      assessmentId: '2', // Unified Technical / Multi section assessment
       info: candidateInfo,
       selfAssessment,
       responses,
@@ -2076,7 +2190,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
                   { name: 'Prompt Engineering templates', cat: 'Prompt' },
                   { name: 'Behavioral Mindsets', cat: 'Mindset' },
                 ].map((sObj, sIdx) => {
-                  const sQs = questions.filter(q => q.category === sObj.cat);
+                  const sQs = loadedQuestions.filter(q => q.category === sObj.cat);
                   const answeredCount = sQs.filter(q => {
                     const ans = getDraftResponse(q.id);
                     return ans?.selectedOption || ans?.textAnswer || ans?.codeAnswer;

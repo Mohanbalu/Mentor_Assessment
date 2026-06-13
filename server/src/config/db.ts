@@ -15,244 +15,635 @@ export interface DatabasePoolConfig {
 
 // Shared database questions definitions for PG and fallback memory synchronization
 const ALL_SEEDED_QUESTIONS = [
-  // --- APTITUDE (MCQ, 10 Minutes section) ---
+  // --- ASSESSMENT 1: APTITUDE ASSESSMENT (20 Questions, 5 Marks Each = 100 Marks) ---
   {
-    id: 'apt-1',
+    id: '1',
+    assessment_id: '1',
     text: 'A train 120m long passes a telegraph post in 6 seconds. Find the speed of the train in km/h.',
     type: 'aptitude_mcq',
-    options: ['36 km/h', '54 km/h', '72 km/h', '90 km/h'],
-    ans: '72 km/h'
+    option_a: '36 km/h',
+    option_b: '72 km/h',
+    option_c: '90 km/h',
+    option_d: '54 km/h',
+    correct_option: 'B',
+    options: ['36 km/h', '72 km/h', '90 km/h', '54 km/h'],
+    ans: '72 km/h',
+    marks: 5
   },
   {
-    id: 'apt-2',
+    id: '2',
+    assessment_id: '1',
     text: 'If 12 men can build a wall in 20 days, how many men will be required to build the same wall in 15 days?',
     type: 'aptitude_mcq',
+    option_a: '15 men',
+    option_b: '16 men',
+    option_c: '18 men',
+    option_d: '24 men',
+    correct_option: 'B',
     options: ['15 men', '16 men', '18 men', '24 men'],
-    ans: '16 men'
+    ans: '16 men',
+    marks: 5
   },
   {
-    id: 'apt-3',
+    id: '3',
+    assessment_id: '1',
     text: 'What is the next number in the series: 3, 5, 9, 17, 33, ...?',
     type: 'aptitude_mcq',
-    options: ['45', '50', '65', '72'],
-    ans: '65'
+    option_a: '45',
+    option_b: '65',
+    option_c: '50',
+    option_d: '72',
+    correct_option: 'B',
+    options: ['45', '65', '50', '72'],
+    ans: '65',
+    marks: 5
+  },
+  {
+    id: '4',
+    assessment_id: '1',
+    text: 'The average of 5 consecutive numbers is 20. Find the largest of these numbers.',
+    type: 'aptitude_mcq',
+    option_a: '20',
+    option_b: '21',
+    option_c: '22',
+    option_d: '24',
+    correct_option: 'C',
+    options: ['20', '21', '22', '24'],
+    ans: '22',
+    marks: 5
+  },
+  {
+    id: '5',
+    assessment_id: '1',
+    text: 'A person crosses a 600m long street in 5 minutes. What is their speed in km/h?',
+    type: 'aptitude_mcq',
+    option_a: '3.6 km/h',
+    option_b: '7.2 km/h',
+    option_c: '8.4 km/h',
+    option_d: '10 km/h',
+    correct_option: 'B',
+    options: ['3.6 km/h', '7.2 km/h', '8.4 km/h', '10 km/h'],
+    ans: '7.2 km/h',
+    marks: 5
+  },
+  {
+    id: '6',
+    assessment_id: '1',
+    text: 'If the cost price of 15 articles is equal to the selling price of 12 articles, find the gain percentage.',
+    type: 'aptitude_mcq',
+    option_a: '25%',
+    option_b: '20%',
+    option_c: '30%',
+    option_d: '15%',
+    correct_option: 'A',
+    options: ['25%', '20%', '30%', '15%'],
+    ans: '25%',
+    marks: 5
+  },
+  {
+    id: '7',
+    assessment_id: '1',
+    text: 'Find the simple interest on $5000 at 10% per annum for 3 years.',
+    type: 'aptitude_mcq',
+    option_a: '$500',
+    option_b: '$1000',
+    option_c: '$1500',
+    option_d: '$2000',
+    correct_option: 'C',
+    options: ['$500', '$1000', '$1500', '$2000'],
+    ans: '$1500',
+    marks: 5
+  },
+  {
+    id: '8',
+    assessment_id: '1',
+    text: 'A sum of money doubles itself in 10 years at simple interest. What is the rate of interest per annum?',
+    type: 'aptitude_mcq',
+    option_a: '5%',
+    option_b: '10%',
+    option_c: '15%',
+    option_d: '20%',
+    correct_option: 'B',
+    options: ['5%', '10%', '15%', '20%'],
+    ans: '10%',
+    marks: 5
+  },
+  {
+    id: '9',
+    assessment_id: '1',
+    text: 'A and B together can do a work in 12 days, while A alone can do it in 30 days. How many days for B alone?',
+    type: 'aptitude_mcq',
+    option_a: '20 days',
+    option_b: '25 days',
+    option_c: '15 days',
+    option_d: '18 days',
+    correct_option: 'A',
+    options: ['20 days', '25 days', '15 days', '18 days'],
+    ans: '20 days',
+    marks: 5
+  },
+  {
+    id: '10',
+    assessment_id: '1',
+    text: 'If 20% of a number is 120, what is 120% of that number?',
+    type: 'aptitude_mcq',
+    option_a: '120',
+    option_b: '360',
+    option_c: '480',
+    option_d: '720',
+    correct_option: 'D',
+    options: ['120', '360', '480', '720'],
+    ans: '720',
+    marks: 5
+  },
+  {
+    id: '11',
+    assessment_id: '1',
+    text: 'The ratio of ages of A and B is 3:4. After 5 years, the ratio becomes 4:5. Present age of A is:',
+    type: 'aptitude_mcq',
+    option_a: '12 years',
+    option_b: '15 years',
+    option_c: '20 years',
+    option_d: '25 years',
+    correct_option: 'B',
+    options: ['12 years', '15 years', '20 years', '25 years'],
+    ans: '15 years',
+    marks: 5
+  },
+  {
+    id: '12',
+    assessment_id: '1',
+    text: 'A basket contains 5 red, 3 blue, and 2 green balls. One ball is drawn. Prob that it is blue is:',
+    type: 'aptitude_mcq',
+    option_a: '1/2',
+    option_b: '1/5',
+    option_c: '3/10',
+    option_d: '2/5',
+    correct_option: 'C',
+    options: ['1/2', '1/5', '3/10', '2/5'],
+    ans: '3/10',
+    marks: 5
+  },
+  {
+    id: '13',
+    assessment_id: '1',
+    text: 'A rectangular field has length 20m and width 15m. Find its perimeter.',
+    type: 'aptitude_mcq',
+    option_a: '35m',
+    option_b: '70m',
+    option_c: '300m',
+    option_d: '150m',
+    correct_option: 'B',
+    options: ['35m', '70m', '300m', '150m'],
+    ans: '70m',
+    marks: 5
+  },
+  {
+    id: '14',
+    assessment_id: '1',
+    text: 'Evaluate options math flow: 120 / (4 + 2 * 3) - 2.',
+    type: 'aptitude_mcq',
+    option_a: '10',
+    option_b: '15',
+    option_c: '8',
+    option_d: '12',
+    correct_option: 'A',
+    options: ['10', '15', '8', '12'],
+    ans: '10',
+    marks: 5
+  },
+  {
+    id: '15',
+    assessment_id: '1',
+    text: 'A clock shows 3:00. What is the angle between the hour and minute hands in degrees?',
+    type: 'aptitude_mcq',
+    option_a: '45 degrees',
+    option_b: '90 degrees',
+    option_c: '120 degrees',
+    option_d: '180 degrees',
+    correct_option: 'B',
+    options: ['45 degrees', '90 degrees', '120 degrees', '180 degrees'],
+    ans: '90 degrees',
+    marks: 5
+  },
+  {
+    id: '16',
+    assessment_id: '1',
+    text: 'A container holds 40L milk. 4L are removed and replaced with water. Process is repeated once more. Milk left:',
+    type: 'aptitude_mcq',
+    option_a: '36 liters',
+    option_b: '34 liters',
+    option_c: '32.4 liters',
+    option_d: '30 liters',
+    correct_option: 'C',
+    options: ['36 liters', '34 liters', '32.4 liters', '30 liters'],
+    ans: '32.4 liters',
+    marks: 5
+  },
+  {
+    id: '17',
+    assessment_id: '1',
+    text: 'The ratio of speed of three cars is 2:3:4. The ratio of time taken by them to cover equivalent distance is:',
+    type: 'aptitude_mcq',
+    option_a: '2:3:4',
+    option_b: '4:3:2',
+    option_c: '4:3:6',
+    option_d: '6:4:3',
+    correct_option: 'D',
+    options: ['2:3:4', '4:3:2', '4:3:6', '6:4:3'],
+    ans: '6:4:3',
+    marks: 5
+  },
+  {
+    id: '18',
+    assessment_id: '1',
+    text: 'If cardinal number of set A is 5 and B is 4, what is the maximum number of elements in A union B?',
+    type: 'aptitude_mcq',
+    option_a: '9',
+    option_b: '5',
+    option_c: '4',
+    option_d: '20',
+    correct_option: 'A',
+    options: ['9', '5', '4', '20'],
+    ans: '9',
+    marks: 5
+  },
+  {
+    id: '19',
+    assessment_id: '1',
+    text: 'What is the highest common factor (HCF) of 24, 36, and 48?',
+    type: 'aptitude_mcq',
+    option_a: '6',
+    option_b: '12',
+    option_c: '18',
+    option_d: '24',
+    correct_option: 'B',
+    options: ['6', '12', '18', '24'],
+    ans: '12',
+    marks: 5
+  },
+  {
+    id: '20',
+    assessment_id: '1',
+    text: 'If log2(x) = 6, find the value of x.',
+    type: 'aptitude_mcq',
+    option_a: '12',
+    option_b: '32',
+    option_c: '64',
+    option_d: '128',
+    correct_option: 'C',
+    options: ['12', '32', '64', '128'],
+    ans: '64',
+    marks: 5
   },
 
-  // --- PROGRAMMING FUNDAMENTALS ---
+  // --- ASSESSMENT 2: TECHNICAL ASSESSMENT (20 Questions, 5 Marks Each = 100 Marks) ---
   {
-    id: 'prog-1',
+    id: '21',
+    assessment_id: '2',
     text: 'Which of the following describes the OOP concept "Polymorphism"?',
     type: 'technical_mcq',
-    options: [
-      'Hiding internal implementation details',
-      'Creating a child class from a parent class',
-      'The ability of different classes to respond to the same message in unique ways',
-      'Restricting direct access to some of an object\'s components'
-    ],
-    ans: 'The ability of different classes to respond to the same message in unique ways'
+    option_a: 'Hiding internal implementation details',
+    option_b: 'Creating child class from parent class',
+    option_c: 'The ability of different classes to respond to the same message in unique ways',
+    option_d: 'Restricting direct access to some components of objects',
+    correct_option: 'C',
+    options: ['Hiding internal implementation details', 'Creating child class from parent class', 'The ability of different classes to respond to the same message in unique ways', 'Restricting direct access to some components of objects'],
+    ans: 'The ability of different classes to respond to the same message in unique ways',
+    marks: 5
   },
   {
-    id: 'prog-2',
+    id: '22',
+    assessment_id: '2',
     text: 'In Python, which of the following is an immutable data type?',
     type: 'technical_mcq',
+    option_a: 'List',
+    option_b: 'Dictionary',
+    option_c: 'Set',
+    option_d: 'Tuple',
+    correct_option: 'D',
     options: ['List', 'Dictionary', 'Set', 'Tuple'],
-    ans: 'Tuple'
+    ans: 'Tuple',
+    marks: 5
   },
   {
-    id: 'prog-3',
-    text: 'Briefly explain the difference between Method Overloading and Method Overriding, citing compilation vs runtime behavior.',
-    type: 'theory',
-    options: null,
-    ans: null
-  },
-
-  // --- WEB DEVELOPMENT ---
-  {
-    id: 'web-1',
+    id: '23',
+    assessment_id: '2',
     text: 'What is the purpose of React\'s "useEffect" cleanup function?',
     type: 'technical_mcq',
-    options: [
-      'To prevent the component from rendering again',
-      'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs',
-      'To force React to re-fetch state from the server',
-      'To reset initial props parameters'
-    ],
-    ans: 'To unsubscribe or cancel asynchronous tasks/timers before the component unmounts or re-runs'
+    option_a: 'To prevent component rerender',
+    option_b: 'To unsubscribe/cancel async jobs or timers before unmount or rerun',
+    option_c: 'To force React to refetch server state',
+    option_d: 'To reset initial arguments parameters',
+    correct_option: 'B',
+    options: ['To prevent component rerender', 'To unsubscribe/cancel async jobs or timers before unmount or rerun', 'To force React to refetch server state', 'To reset initial arguments parameters'],
+    ans: 'To unsubscribe/cancel async jobs or timers before unmount or rerun',
+    marks: 5
   },
   {
-    id: 'web-2',
-    text: 'Which CSS layout system is best suited for responsive, complex two-dimensional structures (rows and columns simultaneously)?',
+    id: '24',
+    assessment_id: '2',
+    text: 'Which CSS layout system is best suited for complex, responsive 2D layouts (rows + columns)?',
     type: 'technical_mcq',
-    options: ['Floats', 'Flexbox', 'CSS Grid', 'Block Positioning'],
-    ans: 'CSS Grid'
+    option_a: 'Floats',
+    option_b: 'Flexbox',
+    option_c: 'CSS Grid',
+    option_d: 'Positioning',
+    correct_option: 'C',
+    options: ['Floats', 'Flexbox', 'CSS Grid', 'Positioning'],
+    ans: 'CSS Grid',
+    marks: 5
   },
   {
-    id: 'web-3',
-    text: 'Explain virtual DOM reconciliation in React. How does setting a unique "key" prop help performance?',
-    type: 'theory',
-    options: null,
-    ans: null
-  },
-
-  // --- DSA ---
-  {
-    id: 'dsa-1',
-    text: 'What is the worst-case time complexity of inserting an element into a balanced Binary Search Tree (such as an AVL tree) of size N?',
+    id: '25',
+    assessment_id: '2',
+    text: 'What is the worst-case complexity of inserting an element into a balanced BST (AVL tree) of size N?',
     type: 'technical_mcq',
+    option_a: 'O(1)',
+    option_b: 'O(log N)',
+    option_c: 'O(N)',
+    option_d: 'O(N log N)',
+    correct_option: 'B',
     options: ['O(1)', 'O(log N)', 'O(N)', 'O(N log N)'],
-    ans: 'O(log N)'
+    ans: 'O(log N)',
+    marks: 5
   },
   {
-    id: 'dsa-2',
-    text: 'Which data structure follows the Last-In-First-Out (LIFO) model and is ideal for reversing call stacks?',
+    id: '26',
+    assessment_id: '2',
+    text: 'Which data structure follows a Last-In-First-Out (LIFO) model?',
     type: 'technical_mcq',
+    option_a: 'Queue',
+    option_b: 'Linked List',
+    option_c: 'Stack',
+    option_d: 'Heap',
+    correct_option: 'C',
     options: ['Queue', 'Linked List', 'Stack', 'Heap'],
-    ans: 'Stack'
+    ans: 'Stack',
+    marks: 5
   },
   {
-    id: 'dsa-3',
-    text: 'Explain the Space and Time complexity tradeoffs of using a Hash Map vs a Sorted Array to find pairs that sum to a target value (Two Sum).',
-    type: 'theory',
-    options: null,
-    ans: null
-  },
-
-  // --- AI & GENERATIVE AI ---
-  {
-    id: 'ai-1',
+    id: '27',
+    assessment_id: '2',
     text: 'In Generative AI, what does the "Temperature" parameter regulate during LLM sampling?',
     type: 'technical_mcq',
-    options: [
-      'The speed at which tokens are processed',
-      'The random variability vs predictable determination of next token selections',
-      'The maximum length of the output prompt context',
-      'The memory size required to deploy the modelWeights structure'
-    ],
-    ans: 'The random variability vs predictable determination of next token selections'
+    option_a: 'Speed of processing',
+    option_b: 'Random variability vs predictable token selection',
+    option_c: 'Maximum prompt length limit',
+    option_d: 'Model weight storage requirements',
+    correct_option: 'B',
+    options: ['Speed of processing', 'Random variability vs predictable token selection', 'Maximum prompt length limit', 'Model weight storage requirements'],
+    ans: 'Random variability vs predictable token selection',
+    marks: 5
   },
   {
-    id: 'ai-2',
+    id: '28',
+    assessment_id: '2',
     text: 'What represents the core mechanism of RAG (Retrieval-Augmented Generation)?',
     type: 'technical_mcq',
-    options: [
-      'Fine-tuning an LLM completely on massive specialized datasets',
-      'Querying an external database/document corpus first, and appending relevant contexts straight into the prompt',
-      'Merging multiple pretrained AI model nodes into a singular pipeline',
-      'Using reinforcement learning from human feedback (RLHF)'
-    ],
-    ans: 'Querying an external database/document corpus first, and appending relevant contexts straight into the prompt'
+    option_a: 'Fine-tuning LLM fully',
+    option_b: 'Querying external database/documents and appending relevant contexts into the prompt',
+    option_c: 'Combining multiple models',
+    option_d: 'Using human feed-backs (RLHF)',
+    correct_option: 'B',
+    options: ['Fine-tuning LLM fully', 'Querying external database/documents and appending relevant contexts into the prompt', 'Combining multiple models', 'Using human feed-backs (RLHF)'],
+    ans: 'Querying external database/documents and appending relevant contexts into the prompt',
+    marks: 5
   },
   {
-    id: 'ai-3',
-    text: 'What is "Prompt Injection"? Describe one strategy developers use to protect software applications invoking AI APIs.',
-    type: 'theory',
-    options: null,
-    ans: null
+    id: '29',
+    assessment_id: '2',
+    text: 'Which SQL join returns all records when there is a match in either left or right table records?',
+    type: 'technical_mcq',
+    option_a: 'INNER JOIN',
+    option_b: 'LEFT JOIN',
+    option_c: 'RIGHT JOIN',
+    option_d: 'FULL OUTER JOIN',
+    correct_option: 'D',
+    options: ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL OUTER JOIN'],
+    ans: 'FULL OUTER JOIN',
+    marks: 5
+  },
+  {
+    id: '30',
+    assessment_id: '2',
+    text: 'What does ACID stand for in database transaction management properties?',
+    type: 'technical_mcq',
+    option_a: 'Atomicity, Consistency, Isolation, Durability',
+    option_b: 'Access, Control, Integrity, Distribution',
+    option_c: 'Auto, Cache, Index, Duration',
+    option_d: 'Analytical, Core, Integration, Delivery',
+    correct_option: 'A',
+    options: ['Atomicity, Consistency, Isolation, Durability', 'Access, Control, Integrity, Distribution', 'Auto, Cache, Index, Duration', 'Analytical, Core, Integration, Delivery'],
+    ans: 'Atomicity, Consistency, Isolation, Durability',
+    marks: 5
+  },
+  {
+    id: '31',
+    assessment_id: '2',
+    text: 'Which network protocol runs over TCP and uses SSL/TLS for secure communication?',
+    type: 'technical_mcq',
+    option_a: 'HTTP',
+    option_b: 'HTTPS',
+    option_c: 'FTP',
+    option_d: 'SMTP',
+    correct_option: 'B',
+    options: ['HTTP', 'HTTPS', 'FTP', 'SMTP'],
+    ans: 'HTTPS',
+    marks: 5
+  },
+  {
+    id: '32',
+    assessment_id: '2',
+    text: 'In JavaScript, what is the returned string value of "typeof null"?',
+    type: 'technical_mcq',
+    option_a: '"null"',
+    option_b: '"undefined"',
+    option_c: '"object"',
+    option_d: '"function"',
+    correct_option: 'C',
+    options: ['"null"', '"undefined"', '"object"', '"function"'],
+    ans: '"object"',
+    marks: 5
+  },
+  {
+    id: '33',
+    assessment_id: '2',
+    text: 'Which HTTP status code represents "No Content"?',
+    type: 'technical_mcq',
+    option_a: '200',
+    option_b: '204',
+    option_c: '301',
+    option_d: '404',
+    correct_option: 'B',
+    options: ['200', '204', '301', '404'],
+    ans: '204',
+    marks: 5
+  },
+  {
+    id: '34',
+    assessment_id: '2',
+    text: 'What is the main advantage of WebSockets?',
+    type: 'technical_mcq',
+    option_a: 'Full-duplex bi-directional communication channels over a single persistent connection',
+    option_b: 'Decreased cookie payloads',
+    option_c: 'Static compression ratios',
+    option_d: 'DNS cache preservation rules',
+    correct_option: 'A',
+    options: ['Full-duplex bi-directional communication channels over a single persistent connection', 'Decreased cookie payloads', 'Static compression ratios', 'DNS cache preservation rules'],
+    ans: 'Full-duplex bi-directional communication channels over a single persistent connection',
+    marks: 5
+  },
+  {
+    id: '35',
+    assessment_id: '2',
+    text: 'In Dockerfile configuration blocks, what instruction designates the starter container layer?',
+    type: 'technical_mcq',
+    option_a: 'INIT',
+    option_b: 'RUN',
+    option_c: 'FROM',
+    option_d: 'COPY',
+    correct_option: 'C',
+    options: ['INIT', 'RUN', 'FROM', 'COPY'],
+    ans: 'FROM',
+    marks: 5
+  },
+  {
+    id: '36',
+    assessment_id: '2',
+    text: 'Which database system is globally popular for in-memory caching and session tokens storage?',
+    type: 'technical_mcq',
+    option_a: 'PostgreSQL',
+    option_b: 'Redis',
+    option_c: 'MongoDB',
+    option_d: 'SQLite',
+    correct_option: 'B',
+    options: ['PostgreSQL', 'Redis', 'MongoDB', 'SQLite'],
+    ans: 'Redis',
+    marks: 5
+  },
+  {
+    id: '37',
+    assessment_id: '2',
+    text: 'Which TypeScript utility type construct forces all keys of interface T to become optional?',
+    type: 'technical_mcq',
+    option_a: 'Required<T>',
+    option_b: 'Omit<T>',
+    option_c: 'Partial<T>',
+    option_d: 'Pick<T>',
+    correct_option: 'C',
+    options: ['Required<T>', 'Omit<T>', 'Partial<T>', 'Pick<T>'],
+    ans: 'Partial<T>',
+    marks: 5
+  },
+  {
+    id: '38',
+    assessment_id: '2',
+    text: 'What is the primary architectural purpose of a Load Balancer?',
+    type: 'technical_mcq',
+    option_a: 'Encrypted storage caching',
+    option_b: 'Distributing incoming network traffic evenly across redundant backend nodes',
+    option_c: 'Enforcing client cookie validations',
+    option_d: 'Parsing JSON API payload parameters',
+    correct_option: 'B',
+    options: ['Encrypted storage caching', 'Distributing incoming network traffic evenly across redundant backend nodes', 'Enforcing client cookie validations', 'Parsing JSON API payload parameters'],
+    ans: 'Distributing incoming network traffic evenly across redundant backend nodes',
+    marks: 5
+  },
+  {
+    id: '39',
+    assessment_id: '2',
+    text: 'In Clean Architecture frameworks, which layers house domain entities and key business usecases?',
+    type: 'technical_mcq',
+    option_a: 'Core Domain',
+    option_b: 'External Controllers',
+    option_c: 'SQL Repository',
+    option_d: 'UI Component Pages',
+    correct_option: 'A',
+    options: ['Core Domain', 'External Controllers', 'SQL Repository', 'UI Component Pages'],
+    ans: 'Core Domain',
+    marks: 5
+  },
+  {
+    id: '40',
+    assessment_id: '2',
+    text: 'Which Git command allows copying a specific commit from one branch to another branch?',
+    type: 'technical_mcq',
+    option_a: 'git merge',
+    option_b: 'git cherry-pick',
+    option_c: 'git rebase',
+    option_d: 'git branch',
+    correct_option: 'B',
+    options: ['git merge', 'git cherry-pick', 'git rebase', 'git branch'],
+    ans: 'git cherry-pick',
+    marks: 5
   },
 
-  // --- CODING ROUND ---
+  // --- ASSESSMENT 3: CODING ASSESSMENT (5 Challenges, 20 Marks Each = 100 Marks) ---
   {
-    id: 'code-1',
-    text: 'Write a function/method to reverse an input string in-place or return a reversed string.',
+    id: '41',
+    assessment_id: '3',
+    text: 'Write a programming function to reverse an input string in-place or return a reversed string.',
     type: 'coding',
+    option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null,
     options: null,
-    ans: null
+    ans: 'function reverseString(str) { return str.split("").reverse().join(""); }',
+    marks: 20
   },
   {
-    id: 'code-2',
+    id: '42',
+    assessment_id: '3',
     text: 'Write an algorithm to locate the second largest distinct element in an array of integers. If it does not exist, return -1.',
     type: 'coding',
+    option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null,
     options: null,
-    ans: null
+    ans: 'function secondLargest(arr) { let unique = [...new Set(arr)].sort((a,b)=>b-a); return unique.length > 1 ? unique[1] : -1; }',
+    marks: 20
   },
   {
-    id: 'coding-1', // Extra legacy routing fallback mapping
-    text: 'Write a JavaScript function "fizzBuzz(n)" that returns an array of strings from 1 to n with replacements.',
+    id: '43',
+    assessment_id: '3',
+    text: 'Write a JavaScript function "fizzBuzz(n)" that returns an array of strings from 1 to n with replacements: "Fizz", "Buzz", or "FizzBuzz".',
     type: 'coding',
+    option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null,
     options: null,
-    ans: null
+    ans: 'function fizzBuzz(n) { return Array.from({length: n}, (_, i) => { const num = i + 1; if (num % 15 === 0) return "FizzBuzz"; if (num % 3 === 0) return "Fizz"; if (num % 5 === 0) return "Buzz"; return num.toString(); }); }',
+    marks: 20
+  },
+  {
+    id: '44',
+    assessment_id: '3',
+    text: 'Write a function "isPalindrome(str)" that checks whether a given string is a palindrome (ignoring casing, symbols, and spaces).',
+    type: 'coding',
+    option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null,
+    options: null,
+    ans: 'function isPalindrome(str) { const clean = str.toLowerCase().replace(/[^a-z0-9]/g, ""); return clean === clean.split("").reverse().join(""); }',
+    marks: 20
+  },
+  {
+    id: '45',
+    assessment_id: '3',
+    text: 'Write a function to return the nth Fibonacci number employing an optimized Dynamic Programming (DP) technique.',
+    type: 'coding',
+    option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null,
+    options: null,
+    ans: 'function fibonacci(n) { if (n <= 1) return n; let prev2 = 0, prev = 1; for (let i = 2; i <= n; i++) { let curr = prev + prev2; prev2 = prev; prev = curr; } return prev; }',
+    marks: 20
   },
 
-  // --- PROMPT ENGINEERING ---
-  {
-    id: 'prompt-1',
-    text: 'Create a high-fidelity system prompt to instruct an AI assistant to generate a robust, fully validation-protected React Login Page component using Tailwind classes.',
-    type: 'prompt',
-    options: null,
-    ans: null
-  },
-  {
-    id: 'prompt-2',
-    text: 'Create a prompt designed to explain "Binary Search" to a 10-year-old using a real-world library/book analogy.',
-    type: 'prompt',
-    options: null,
-    ans: null
-  },
-  {
-    id: 'prompt-3',
-    text: 'Create a highly clear prompt template for generating a command-line Python Expense Tracker featuring storage, categorizations, and monthly summaries.',
-    type: 'prompt',
-    options: null,
-    ans: null
-  },
-
-  // --- LEARNING MINDSET ---
-  {
-    id: 'mind-1',
-    text: 'Why do you want to become a Software Engineer? What fuels your professional commitment?',
-    type: 'mindset',
-    options: null,
-    ans: null
-  },
-  {
-    id: 'mind-2',
-    text: 'How do you learn new technologies? Describe your self-directed research workflow.',
-    type: 'mindset',
-    options: null,
-    ans: null
-  },
-  {
-    id: 'mind-3',
-    text: 'What do you do when you get stuck on a difficult code bug and there\'s no direct solution on StackOverflow or AI?',
-    type: 'mindset',
-    options: null,
-    ans: null
-  },
-  {
-    id: 'mind-4',
-    text: 'What project(s) have you built recently? Outline the structure, technology stacked, and what you discovered during development.',
-    type: 'mindset',
-    options: null,
-    ans: null
-  },
-  {
-    id: 'mind-5',
-    text: 'What are your career goals for the next 2-3 years, and how do you plan to manifest them?',
-    type: 'mindset',
-    options: null,
-    ans: null
-  },
-  {
-    id: 'mindset-1', // Extra legacy routing fallback mapping
-    text: 'Describe a situation where a major bug reached production under your watch.',
-    type: 'mindset',
-    options: null,
-    ans: null
-  },
-
-  // --- SELF RATINGS ---
-  { id: 'self-rating-c', text: 'Self assessment score rating for C Programming capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-python', text: 'Self assessment score rating for Python capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-java', text: 'Self assessment score rating for Java capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-dsa', text: 'Self assessment score rating for Data Structures & Algorithms capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-html', text: 'Self assessment score rating for HTML capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-css', text: 'Self assessment score rating for CSS capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-javascript', text: 'Self assessment score rating for Javascript capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-react', text: 'Self assessment score rating for React capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-sql', text: 'Self assessment score rating for SQL database capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-aiMl', text: 'Self assessment score rating for AI/ML concepts capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-generativeAi', text: 'Self assessment score rating for Generative AI and prompt engineering capability', type: 'self_rating', options: null, ans: null },
-  { id: 'self-rating-communication', text: 'Self assessment score rating for professional and verbal communication capability', type: 'self_rating', options: null, ans: null }
+  // --- SELF RATINGS (Required for PHASE 4) ---
+  { id: '46', assessment_id: 'self_rating', text: 'Self assessment score rating for C Programming capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '47', assessment_id: 'self_rating', text: 'Self assessment score rating for Python capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '48', assessment_id: 'self_rating', text: 'Self assessment score rating for Java capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '49', assessment_id: 'self_rating', text: 'Self assessment score rating for Data Structures & Algorithms capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '50', assessment_id: 'self_rating', text: 'Self assessment score rating for HTML capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '51', assessment_id: 'self_rating', text: 'Self assessment score rating for CSS capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '52', assessment_id: 'self_rating', text: 'Self assessment score rating for Javascript capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '53', assessment_id: 'self_rating', text: 'Self assessment score rating for React capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '54', assessment_id: 'self_rating', text: 'Self assessment score rating for SQL database capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '55', assessment_id: 'self_rating', text: 'Self assessment score rating for AI/ML concepts capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '56', assessment_id: 'self_rating', text: 'Self assessment score rating for Generative AI and prompt engineering capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 },
+  { id: '57', assessment_id: 'self_rating', text: 'Self assessment score rating for professional and verbal communication capability', type: 'self_rating', option_a: null, option_b: null, option_c: null, option_d: null, correct_option: null, options: null, ans: null, marks: 10 }
 ];
 
 // Highly reliable, structured in-memory fallback state to guarantee local sandbox preview executes flawlessly
@@ -284,23 +675,46 @@ const memDatabase = {
   ] as any[],
   assessments: [
     {
-      id: 'asm-1',
-      title: 'Q3 Software Engineering Cohort Entrance Test',
-      description: 'Aptitude, DSA, Web Foundations, and standard coding execution challenges.',
-      assessment_type: 'Full-stack',
-      duration_minutes: 90,
+      id: '1',
+      title: 'Aptitude Assessment',
+      description: 'Comprehensive evaluation of general analytical ability, logical reasoning, and quantitative problem solving.',
+      assessment_type: 'Aptitude',
+      duration_minutes: 30,
+      total_marks: 100,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: '2',
+      title: 'Technical Assessment',
+      description: 'Deep technical check analyzing OOP foundations, language semantics, frameworks, database architectures, and algorithms.',
+      assessment_type: 'Technical',
+      duration_minutes: 45,
+      total_marks: 100,
+      created_at: new Date('2026-06-11T12:00:00Z')
+    },
+    {
+      id: '3',
+      title: 'Coding Assessment',
+      description: 'Real-world coding challenge designed to measure hands-on programming execution, syntax logic, and clean coding practices.',
+      assessment_type: 'Coding',
+      duration_minutes: 60,
       total_marks: 100,
       created_at: new Date('2026-06-11T12:00:00Z')
     }
   ] as any[],
   questions: ALL_SEEDED_QUESTIONS.map(q => ({
     id: q.id,
-    assessment_id: 'asm-1',
+    assessment_id: q.assessment_id,
     question_text: q.text,
     question_type: q.type,
+    option_a: q.option_a || null,
+    option_b: q.option_b || null,
+    option_c: q.option_c || null,
+    option_d: q.option_d || null,
+    correct_option: q.correct_option || null,
     options_json: q.options ? JSON.stringify(q.options) : null,
     correct_answer: q.ans,
-    marks: 10,
+    marks: q.marks || 10,
     created_at: new Date('2026-06-11T12:00:00Z')
   })) as any[],
   assessment_attempts: [
@@ -757,44 +1171,89 @@ export class ProductionDatabaseEngine {
 
     // Seed core assessment and questions if they do not exist
     try {
-      const checkAsm = await this.query(`SELECT id FROM assessments WHERE id = 'asm-1';`);
-      if (checkAsm.rowCount === 0) {
-        console.log('[Db Engine Schema Init] Seeding default SE entrance test blueprint.');
+      // 1. Audit and expand questions table columns for Phase 2 MCQs
+      await this.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS option_a TEXT;`);
+      await this.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS option_b TEXT;`);
+      await this.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS option_c TEXT;`);
+      await this.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS option_d TEXT;`);
+      await this.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS correct_option VARCHAR(10);`);
+
+      console.log('[Db Engine Schema Init] Seeding requested multi-assessments.');
+      
+      // Upsert the three assessments
+      const assessmentBlueprints = [
+        {
+          id: '1',
+          title: 'Aptitude Assessment',
+          description: 'Comprehensive evaluation of general analytical ability, logical reasoning, and quantitative problem solving.',
+          type: 'Aptitude',
+          duration: 30,
+          total_marks: 100
+        },
+        {
+          id: '2',
+          title: 'Technical Assessment',
+          description: 'Deep technical check analyzing OOP foundations, language semantics, frameworks, database architectures, and algorithms.',
+          type: 'Technical',
+          duration: 45,
+          total_marks: 100
+        },
+        {
+          id: '3',
+          title: 'Coding Assessment',
+          description: 'Real-world coding challenge designed to measure hands-on programming execution, syntax logic, and clean coding practices.',
+          type: 'Coding',
+          duration: 60,
+          total_marks: 100
+        }
+      ];
+
+      for (const ab of assessmentBlueprints) {
         await this.query(`
           INSERT INTO assessments (id, title, description, assessment_type, duration_minutes, total_marks)
-          VALUES (
-            'asm-1', 
-            'Q3 Software Engineering Cohort Entrance Test', 
-            'Aptitude, DSA, Web Foundations, and standard coding execution challenges.',
-            'Full-stack',
-            90,
-            100
-          );
-        `);
+          VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (id) DO UPDATE SET
+            title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            assessment_type = EXCLUDED.assessment_type,
+            duration_minutes = EXCLUDED.duration_minutes,
+            total_marks = EXCLUDED.total_marks;
+        `, [ab.id, ab.title, ab.description, ab.type, ab.duration, ab.total_marks]);
       }
 
-      console.log('[Db Engine Schema Init] Seeding full list of 37 questions via UPSERT.');
+      console.log(`[Db Engine Schema Init] Seeding full list of ${ALL_SEEDED_QUESTIONS.length} questions via UPSERT.`);
       for (const sq of ALL_SEEDED_QUESTIONS) {
         await this.query(`
-          INSERT INTO questions (id, assessment_id, question_text, question_type, options_json, correct_answer, marks)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          INSERT INTO questions (id, assessment_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_option, options_json, correct_answer, marks)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           ON CONFLICT (id) DO UPDATE SET 
+            assessment_id = EXCLUDED.assessment_id,
             question_text = EXCLUDED.question_text,
             question_type = EXCLUDED.question_type,
+            option_a = EXCLUDED.option_a,
+            option_b = EXCLUDED.option_b,
+            option_c = EXCLUDED.option_c,
+            option_d = EXCLUDED.option_d,
+            correct_option = EXCLUDED.correct_option,
             options_json = EXCLUDED.options_json,
             correct_answer = EXCLUDED.correct_answer,
             marks = EXCLUDED.marks;
         `, [
           sq.id,
-          'asm-1',
+          sq.assessment_id,
           sq.text,
           sq.type,
+          sq.option_a || null,
+          sq.option_b || null,
+          sq.option_c || null,
+          sq.option_d || null,
+          sq.correct_option || null,
           sq.options ? JSON.stringify(sq.options) : null,
           sq.ans,
-          10
+          sq.marks || 10
         ]);
       }
-      console.log('[Db Engine Schema Init] All 37 core assessment and self-rating questions seeded and updated successfully.');
+      console.log('[Db Engine Schema Init] All core multi-assessments and questions seeded and updated successfully in PostgreSQL.');
     } catch (schemaErr: any) {
       console.error('[Db Engine Schema Init ERR]: Failed to assert schema structure:', schemaErr.message || schemaErr);
     }

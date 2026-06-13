@@ -34,11 +34,24 @@ export default function App() {
   });
 
   const handleLogout = () => {
+    // Scaffold and clear all potential candidate storage keys (scoped, guest, and legacy) to avoid any leakage to another user
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('candidate_') || key.startsWith('cand_') || key.startsWith('temp_guest_'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
     setToken(null);
     setAdminUser(null);
     localStorage.removeItem('sa_admin_jwt');
     localStorage.removeItem('sa_admin_user');
     setActivePortal('candidate');
+
+    // Force a full clean page refresh to completely rebuild all states from dry local storage
+    window.location.reload();
   };
   
   // Persistent Storage states
@@ -267,7 +280,7 @@ export default function App() {
     }
   };
 
-  if (!token) {
+  if (!token || !adminUser) {
     return (
       <div id="ai-studio-applet-root" className="min-h-screen bg-slate-905 text-slate-100 flex flex-col font-sans select-none antialiased">
         <header className="bg-slate-950/95 border-b border-slate-850 px-6 py-4 flex items-center justify-between">

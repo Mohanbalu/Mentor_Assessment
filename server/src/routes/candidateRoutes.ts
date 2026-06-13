@@ -91,6 +91,14 @@ router.post('/screen-responses', (req, res, next) => {
   candidateController.saveScreenResponses(req, res).catch(next);
 });
 
+router.get('/assessments', (req, res, next) => {
+  candidateController.getAssessments(req, res).catch(next);
+});
+
+router.get('/assessments/:id/questions', (req, res, next) => {
+  candidateController.getAssessmentQuestions(req, res).catch(next);
+});
+
 // =========================================================================
 // SECURE GUARDED GATEWAYS (Only matching admin@indiwebpros.in in JWT)
 // =========================================================================
