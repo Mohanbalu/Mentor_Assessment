@@ -603,9 +603,9 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
     return responses.find(r => r.questionId === questionId);
   };
 
-  // Section timer - counts down from 300 seconds (5 min) or 600 (10 min) depending on active section screen
+  // Section timer - counts down from 300 seconds (5 min) or 1800 (30 min) depending on active section screen
   const getSectionMaxSeconds = (screen: number): number => {
-    if (screen === 5) return 600; // Aptitude (10 min)
+    if (screen === 5) return 1800; // Aptitude (30 min)
     if (screen === 6) return 600; // Programming (10 min)
     if (screen === 7) return 600; // Web (10 min)
     if (screen === 8) return 900; // DSA (15 min)
@@ -1350,7 +1350,7 @@ export default function CandidateFlow({ onSubmissionComplete, questions = INITIA
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-b border-slate-800 py-6 my-2">
               <div className="flex flex-col gap-0.5">
                 <span className="text-slate-500 text-[10px] uppercase font-mono font-bold">Duration</span>
-                <span className="text-slate-200 font-bold font-sans">90 Minutes Total</span>
+                <span className="text-slate-200 font-bold font-sans">110 Minutes Total</span>
               </div>
               <div className="flex flex-col gap-0.5">
                 <span className="text-slate-500 text-[10px] uppercase font-mono font-bold">Total Marks</span>

@@ -27,6 +27,18 @@ export default function AdminFlow({
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateAssessmentSubmission | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  const totalQuests = questions?.length || 12;
+  const getAttemptedCount = (candidate: CandidateAssessmentSubmission | null) => {
+    if (!candidate || !candidate.responses) return 0;
+    return candidate.responses.filter(ans => {
+      const selected = ans.selectedOption?.trim();
+      const text = ans.textAnswer?.trim();
+      const code = ans.codeAnswer?.trim();
+      return !!(selected || text || code);
+    }).length;
+  };
+  const attemptedQuests = getAttemptedCount(selectedCandidate);
+
   const handleSelectCandidate = async (candidate: CandidateAssessmentSubmission) => {
     setSelectedCandidate(candidate);
     try {
@@ -696,20 +708,30 @@ export default function AdminFlow({
                 </div>
               </div>
 
-              {selectedCandidate.evaluation && (
-                <div className="flex items-center gap-3 font-sans">
-                  <div>
-                    <span className="text-[10px] font-mono text-slate-500 uppercase block text-right">OVERALL RATING</span>
-                    <strong className="text-2xl font-extrabold text-indigo-400 block text-right">
-                      {selectedCandidate.evaluation.overallRating} <span className="text-xs text-slate-500">/ 10</span>
-                    </strong>
-                  </div>
-                  
-                  <div className="px-4 py-2 bg-indigo-600 rounded-xl text-center border border-indigo-500/30 text-xs md:text-sm font-bold text-white shadow shadow-indigo-950">
-                    {selectedCandidate.evaluation.level.toUpperCase()}
-                  </div>
+              <div className="flex items-center gap-4 font-sans flex-wrap justify-end shrink-0">
+                {/* Attempted Questions Badge */}
+                <div className="bg-slate-950/50 border border-slate-850 px-3.5 py-1.5 rounded-xl text-right">
+                  <span className="text-[9px] font-mono text-slate-500 uppercase block tracking-wider font-bold">QUESTIONS ATTEMPTED</span>
+                  <strong className="text-lg font-extrabold text-teal-400 block mt-0.5 leading-none">
+                    {attemptedQuests} <span className="text-xs font-medium text-slate-400">/ {totalQuests}</span>
+                  </strong>
                 </div>
-              )}
+
+                {selectedCandidate.evaluation && (
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <span className="text-[10px] font-mono text-slate-500 uppercase block text-right">OVERALL RATING</span>
+                      <strong className="text-2xl font-extrabold text-indigo-400 block text-right">
+                        {selectedCandidate.evaluation.overallRating} <span className="text-xs text-slate-500">/ 10</span>
+                      </strong>
+                    </div>
+                    
+                    <div className="px-4 py-2 bg-indigo-600 rounded-xl text-center border border-indigo-500/30 text-xs md:text-sm font-bold text-white shadow shadow-indigo-950">
+                      {selectedCandidate.evaluation.level.toUpperCase()}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Assessment report specs cards */}
@@ -924,9 +946,14 @@ export default function AdminFlow({
 
             {/* Candidate Answers inspection area */}
             <div className="bg-slate-950 border border-slate-850 p-5 rounded-xl flex flex-col gap-4">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold border-b border-slate-900 pb-2">
-                SUBMITTED COHORT ANSWERS INSPECTIONS
-              </h3>
+              <div className="flex items-center justify-between border-b border-slate-900 pb-2 flex-wrap gap-2">
+                <h3 className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold">
+                  SUBMITTED COHORT ANSWERS INSPECTIONS
+                </h3>
+                <span className="px-2.5 py-0.5 bg-slate-900 border border-slate-850 rounded font-mono text-[10px] text-teal-400 font-bold">
+                  Attempted: {attemptedQuests} of {totalQuests}
+                </span>
+              </div>
               <div className="flex flex-col gap-5">
                 {selectedCandidate.responses.map((ans, idx) => {
                   const isCorrect = ans.obtainedMarks !== undefined && ans.obtainedMarks > 0;
